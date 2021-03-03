@@ -1,10 +1,10 @@
 # Autopilot
 
-Arduino Due PWM has to be modified to be the right frequency.  Edit:
+Arduino Due PWM has to be modified to be the right frequency.  Edit variant.h file:
 
 /Users/nickbain/Library/Arduino15/packages/arduino/hardware/sam/1.6.12/variants/arduino_due_x/variant.h
 
-And lines ~220 to 240 should look like:
+And change PWM_FREQUENCY to 392.  Should look like:
 
 /*
  * PWM
