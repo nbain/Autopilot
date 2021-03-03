@@ -1,6 +1,8 @@
 #include "Control.h"
 #include <math.h> //For sqrt() control
 
+cout << "TESTING" << endl;
+
 float dt;
 float l_time = 0;
 float desired_yaw = 0;
