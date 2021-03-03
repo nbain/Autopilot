@@ -1,7 +1,7 @@
 #include "Control.h"
 #include <math.h> //For sqrt() control
 
-cout << "TESTING" << endl;
+// I AM TESTING A GIT COMMIT
 
 float dt;
 float l_time = 0;
