@@ -27,6 +27,9 @@ void Location::init()
 	  digitalWrite(39, HIGH);
 	  delay(650);
 	   
+
+//	   /*
+
 	   while(!bno.begin())
 	  {
 
@@ -60,21 +63,33 @@ void Location::init()
 	  }
 
 	  Serial.println("I2C bus up, BNO055 detected");
-	  
-	  delay(1000);
 
-	  Wire.setClock(100000);
-	    
-	  bno.setExtCrystalUse(true);
+
+		bno.setExtCrystalUse(true);
+
+//*/
 
 	}
+
 
 
 
 void Location::estimate()
 	{
 
-	//Serial.print("L");
+	int start = micros();
+
+///*
+	//For testing without IMU connected
+	Location.pitch = 0.1;
+	Location.roll = 0.1;
+	Location.yaw = 0.1;
+	Location.pitch_rate = 0;
+	Location.roll_rate = 0;
+	Location.yaw_rate = 0;
+	return;
+//*/
+
 
 	int starting = micros();
 	timeSinceReset = millis() - lastReset;
@@ -114,7 +129,6 @@ void Location::estimate()
   	//Haven't figured out why, but getEvent works (doesn't return zeros after a while) and getGv
     bno.getEvent(&orientationEvent, Adafruit_BNO055::VECTOR_EULER);
     bno.getEvent(&ratesEvent, Adafruit_BNO055::VECTOR_GYROSCOPE);
-  	
 
 
 
@@ -153,14 +167,25 @@ were beforehand
 
 
 
+  	//In radians.
+  	Location.pitch = orientationEvent.orientation.z * M_PI / 180 - 0.045; //Pitch - wide side placed left-right, 4 pins forward.  Pitch up is +.
+  	Location.roll = orientationEvent.orientation.y * M_PI / 180 + 0.035; //Roll - wide side placed left-right, 4 pins forward.  Right roll is +.
+  	
+	//Set yaw location from 0 to 2*PI to -PI to PI
+	//Yaw - wide side of BNO055 placed from left to right.  Going CW from top is +
+	if (orientationEvent.orientation.x * M_PI/180 > M_PI){
+		Location.yaw = orientationEvent.orientation.x * M_PI/180 - 2*M_PI;
+	}
+	else{
+		Location.yaw = orientationEvent.orientation.x * M_PI/180;
+	}
 
-  	//In degrees
-  	Location.pitch = orientationEvent.orientation.z; //Pitch - wide side placed left-right, 4 pins forward.  Pitch up is +.
-  	Location.roll = orientationEvent.orientation.y; //Roll - wide side placed left-right, 4 pins forward.  Right roll is +.
-  	Location.yaw = orientationEvent.orientation.x; //Yaw - wide side placed from left to right.  Going CW from top is +
 
 
+
+/*
   	if (abs(last_pitch-Location.pitch) > 5){ //If sensor messed up, use last measurement instead
+
 		Location.pitch = last_pitch;
 		Location.roll = last_roll;
 		Location.yaw = last_yaw;
@@ -200,11 +225,31 @@ were beforehand
 
 	}
 
-  	//Different signs from euler orientations - values in degrees per second (even though Adafruit library documentation says rad/sec)
-  	Location.pitch_rate = -ratesEvent.gyro.x;
-  	Location.roll_rate = -ratesEvent.gyro.y;
-  	Location.yaw_rate = -ratesEvent.gyro.z;
+	*/
 
+  	//Different signs from euler orientations - values in degrees per second (even though Adafruit library documentation says rad/sec)
+  	Location.pitch_rate = -ratesEvent.gyro.x * M_PI / 180;
+  	Location.roll_rate = -ratesEvent.gyro.y * M_PI / 180;
+  	Location.yaw_rate = -ratesEvent.gyro.z * M_PI / 180;
+
+
+  	int end = micros();
+
+  	  	//Location checks
+	Serial.print("  YRP: ");
+
+  	Serial.print(Location.yaw,3); Serial.print(" "); //Yaw
+  	Serial.print(Location.roll,3); Serial.print(" "); //Roll
+  	Serial.print(Location.pitch,3);  Serial.print(" "); //Pitch
+
+  	Serial.print(Location.yaw_rate,3); Serial.print(" "); //Yaw
+  	Serial.print(Location.roll_rate,3); Serial.print(" "); //Roll
+  	Serial.print(Location.pitch_rate,3);  Serial.print(" "); //Pitch
+
+  	Serial.println(end - start);
+  	Serial.print(" ");
+
+  	Serial.println(micros());
 
 
   	last_roll2 = last_roll;
@@ -271,13 +316,13 @@ void Location::Log()
   	//Location checks
 	Serial.print("  YRP: ");
 
-  	Serial.print(Location.yaw); Serial.print(" "); //Yaw
-  	Serial.print(Location.roll); Serial.print(" "); //Roll
-  	Serial.print(Location.pitch);  Serial.print(" "); //Pitch
+  	Serial.print(Location.yaw,3); Serial.print(" "); //Yaw
+  	Serial.print(Location.roll,3); Serial.print(" "); //Roll
+  	Serial.print(Location.pitch,3);  Serial.print(" "); //Pitch
 
-  	Serial.print(Location.yaw_rate); Serial.print(" "); //Yaw
-  	Serial.print(Location.roll_rate); Serial.print(" "); //Roll
-  	Serial.print(Location.pitch_rate);  Serial.print(" "); //Pitch
+  	Serial.print(Location.yaw_rate,3); Serial.print(" "); //Yaw
+  	Serial.print(Location.roll_rate,3); Serial.print(" "); //Roll
+  	Serial.print(Location.pitch_rate,3);  Serial.print(" "); //Pitch
 
   	Serial.println(micros());
 

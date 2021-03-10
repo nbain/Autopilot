@@ -95,7 +95,19 @@ void Receiver::init()
 void Receiver::read_intent()
 	{
 		
-		//Serial.print("R");
+		///*
+		//For testing without receiver connected
+	  	Receiver.thrust = 0.8529;
+	  	Receiver.pitch = 0;
+	  	Receiver.roll = 0;
+	  	Receiver.yaw = 0;
+	  	Receiver.aux1 = 0;
+	  	Receiver.aux2 = 0;
+	  	Receiver.dial1 = 0;
+	  	return;
+	  	//*/
+
+
 
 		Receiver.thrust = ((float)ch0_us - MIN_PWM_THRUST) / (float)(MAX_PWM_THRUST - MIN_PWM_THRUST);
 		if (Receiver.thrust > 1.1){

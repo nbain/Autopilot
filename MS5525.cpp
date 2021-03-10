@@ -48,6 +48,7 @@ int temp_start = 0;  //Temperature ADC start time
 uint32_t press_32;
 uint32_t temp_32;
 
+int64_t pressure;
 float velocity_ms;
 
 
@@ -68,6 +69,7 @@ C6 - 8076
 void MS5525::init(uint8_t slave_address)
 {
 
+//If testing MS5525 alone, make sure to uncomment lines below to start the I2C bus
  /*
 	int i2c_hz = 400000;
 	Wire.begin();
@@ -110,6 +112,9 @@ void MS5525::init(uint8_t slave_address)
   C4 = read16bits(0x76, 0xA8);
   C5 = read16bits(0x76, 0xAA);
   C6 = read16bits(0x76, 0xAC);
+
+  Serial.print("C1:  "); Serial.print(C1);
+  Serial.print("C2:  "); Serial.print(C2);
   
 
 }
@@ -168,7 +173,7 @@ void MS5525::readPressure()
 
 	    int64_t sens = int64_t(C1) * (1UL << Q1) + (int64_t(C3) * dTemp) / (1UL << Q3); //Pressure sensitivity at current temp
 
-	    int64_t pressure = (press_32 * sens / (1UL << 21) - offset) / (1UL << 15); //Pressure in psi times 10,000
+	    pressure = (press_32 * sens / (1UL << 21) - offset) / (1UL << 15); //Pressure in psi times 10,000
 
   
   		startADC(0x76, 0x54); //Start accumulating temperature reading into ADC
@@ -176,15 +181,21 @@ void MS5525::readPressure()
 
 
 		float psi_to_pa = 6894.76; //PSI to Pascal conversion
-		float experimental_offset = 30; //At zero input velocity, one particular sensor reads ~30 (1/10k psi) when at zero
+		float experimental_offset = 27; //At zero input velocity, one particular sensor reads ~30 (1/10k psi) when at zero
 		float air_density = 1.1; //Air density in kg/m^3
 		float pressure_pa = ((float)pressure - experimental_offset)/10000* psi_to_pa; //Static/Total pressure differential
 		
 		velocity_ms = sqrt(abs(pressure_pa) / (0.5 * air_density));
 
-
 /*
-		Serial.print("Pressure: ");
+
+		Serial.print("Temp: ");
+		Serial.print((float)temp);
+
+		Serial.print("Press: ");
+		Serial.print((float)pressure);
+
+		Serial.print(" Pressure: ");
 		Serial.print(pressure_pa);
 		Serial.print("Vel: ");
 		Serial.println(velocity_ms);
@@ -300,8 +311,10 @@ void MS5525::Log()
 	{
 		
 
-		//Receiver checks
-		Serial.print("  Vel: ");
+		Serial.print(" Pres: ");
+	  	Serial.print((int)pressure); Serial.print(" "); //In 1/10k of psi
+
+	  	Serial.print("  Vel: ");
 	  	Serial.print(velocity_ms); Serial.print(" ");
 
 

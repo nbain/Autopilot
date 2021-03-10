@@ -16,6 +16,10 @@ corresponds with what % of total thrust
 */
 
 /*
+
+Convert to Newtons
+
+
 1500 kv motor at 11.1V:
 Thrust (lbs) = [ (PWM - 1020) / 610 ] ^ 1.55
 
@@ -37,6 +41,8 @@ Thrust (lbs) = [ (PWM - 1050) / 590 ] ^ 1.61
 
 For thrust at higher freestream velocities, assume max power is same
 	-Won't be same:
+
+
 
 
 
@@ -85,32 +91,10 @@ void Motors::init()
 
 }
 
-/*
-Send pulse train of certain number of microseconds to a certain pin, at whatever frequency is being used
-until rewritten by a new analogWrite
-
-Nearest_bit_value must be between 0 and 255 inclusive, so microseconds must be from 0 to 2490
-(technically a few microseconds beyond that because of rounding, but no reason to do that) 
-
-At 400Hz, pulses are actually 2490us apart (2490us between starts, ends)
-Each one goes up by 9.765 us (confirmed to the thosandths place by oscilloscope, and equals 2500 / 256)
-Value of 254 is 2,480.0 us long, value of 1 is 9.765 long
-0 is always off, 255 is always on
-*/
-void Motors::sendMicroseconds(int motor_pin, int microseconds)
-{
-
-	//float analog_write_bit_us = 1000000.0f / (float)MOTORS_PWM_FREQ / 255;
-
-	float precise_bit_value = (float)microseconds / 10;
-
-	int nearest_bit_value = round(precise_bit_value);
 
 
-	analogWrite(motor_pin, nearest_bit_value);
 
 
-}
 
 
 /*
@@ -173,6 +157,41 @@ void Motors::sendMotorSignals(Control::COMMANDS * Commands)
 
 	
 }
+
+
+
+
+
+
+/*
+Send pulse train of certain number of microseconds to a certain pin, at whatever frequency is being used
+until rewritten by a new analogWrite
+
+Nearest_bit_value must be between 0 and 255 inclusive, so microseconds must be from 0 to 2490
+(technically a few microseconds beyond that because of rounding, but no reason to do that) 
+
+At 400Hz, pulses are actually 2490us apart (2490us between starts, ends)
+Each one goes up by 9.765 us (confirmed to the thosandths place by oscilloscope, and equals 2500 / 256)
+Value of 254 is 2,480.0 us long, value of 1 is 9.765 long
+0 is always off, 255 is always on
+*/
+void Motors::sendMicroseconds(int motor_pin, int microseconds)
+{
+
+	//float analog_write_bit_us = 1000000.0f / (float)MOTORS_PWM_FREQ / 255;
+
+	float precise_bit_value = (float)microseconds / 10;
+
+	int nearest_bit_value = int(precise_bit_value); //Changed from round() because Eigen library seems to redefine round() and messes this up
+
+
+	analogWrite(motor_pin, nearest_bit_value);
+
+
+}
+
+
+
 
 
 void Motors::Log()
