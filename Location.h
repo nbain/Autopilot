@@ -49,17 +49,18 @@ class Location
 		struct LOCATION
 		{
 
-			float pitch; //In degrees (for now - might want degrees in float later)
+			float pitch; //In radians 
 			float roll;
-			float yaw;
+			float yaw; //From -PI to PI
 
-			float pitch_rate; //In dps.Found from looking at pitch delta and delta t - no new information
+			float pitch_rate; //In rad/sec. 
 			float roll_rate;
 			float yaw_rate;
 
 			float pitch_acc;
 			float roll_acc;
 			float yaw_acc;
+
 
 			//Will fill in position - lat, long, height MSL - when ready
 
@@ -68,6 +69,10 @@ class Location
 		};
 
 		LOCATION Location; //Most recent location data
+
+
+
+		
 
 
 };
