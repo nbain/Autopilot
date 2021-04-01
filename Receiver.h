@@ -36,6 +36,15 @@
 #define MIN_PWM_DIAL1 988
 #define MAX_PWM_DIAL1 2012
 
+/*
+
+For input voltage = 6.2V, still 3.30V PWM output
+
+Pulses every 18ms -> 55.55 Hz (still 1,000 us - 2,000 us)
+
+
+*/
+
 
 //Pitch, roll, and yaw should be -1 to 1, others should be 0-1
 

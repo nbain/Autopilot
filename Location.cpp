@@ -7,9 +7,38 @@
 Key thing about the BNO055 is fusion data is produced at 100 Hz - reading significantly faster than this (around 200 Hz) causes
 it to return only zeroes.
 
-
-
 //I2C Bus Recovery code/discussion: https://github.com/esp8266/Arduino/issues/1025
+
+
+I2C on Due:
+	-Make sure powered on 3.3V, not 5V
+	-I2C tied to 3.3V
+	-Confirmed on oscilloscope that on 3.3V
+
+I2C on Udoo:
+
+Need PC9306 to level shift.  People running into problems with others.
+Same chip used for onboard level shifter on Udoo (to brick connector) - not clear if still there on Udoo X86 Advanced
+https://www.udoo.org/forum/threads/how-can-i-use-the-braswell-i2c-interface.8937/
+
+Udoo schematic:
+https://udoo.org/download/files/UDOO_X86/schematics/UDOOX86_revH_schematics.pdf
+
+Braswell chip has ~1,100 pins.  7 I2C channels (14 pins).
+	-1 not connected at all one Udoo
+	-2 are dual mode (I2C and another) and both used for other mode
+	-1 used to reset Curie chip
+	-1 connected to PCA9306 level shifter and out to CN27 (doesn't seem to exist on X86 Advanced)
+
+	-I2C0_SCL and I2C0_SDA go directly from chip to pins 10 and 12 on CN14
+	-I2C5_SCL and I2C0_SDA go directly from chip to pins 2 and 4 on CN14
+	-400 pF max bus capacitance
+	-1.8V output from Braswell pin
+		-1.26V is min. logic high, 0.54V is max logic low input
+		-0.36V is max logic low sent as output
+		-2-5 pF pin capacitance
+	-Never provide more than 1.8V on pin
+
 
 
 */
@@ -82,8 +111,8 @@ void Location::estimate()
 ///*
 	//For testing without IMU connected
 	Location.pitch = 0.1;
-	Location.roll = 0.1;
-	Location.yaw = 0.1;
+	Location.roll = -0.1;
+	Location.yaw = -0.1;
 	Location.pitch_rate = 0;
 	Location.roll_rate = 0;
 	Location.yaw_rate = 0;
@@ -233,23 +262,20 @@ were beforehand
   	Location.yaw_rate = -ratesEvent.gyro.z * M_PI / 180;
 
 
-  	int end = micros();
 
   	  	//Location checks
-	Serial.print("  YRP: ");
+	Serial.println("RPY: ");
 
-  	Serial.print(Location.yaw,3); Serial.print(" "); //Yaw
   	Serial.print(Location.roll,3); Serial.print(" "); //Roll
   	Serial.print(Location.pitch,3);  Serial.print(" "); //Pitch
+  	Serial.print(Location.yaw,3); Serial.println(" "); //Yaw
 
-  	Serial.print(Location.yaw_rate,3); Serial.print(" "); //Yaw
   	Serial.print(Location.roll_rate,3); Serial.print(" "); //Roll
   	Serial.print(Location.pitch_rate,3);  Serial.print(" "); //Pitch
+  	Serial.print(Location.yaw_rate,3); Serial.println(" "); //Yaw
 
-  	Serial.println(end - start);
-  	Serial.print(" ");
 
-  	Serial.println(micros());
+
 
 
   	last_roll2 = last_roll;
@@ -314,17 +340,17 @@ void Location::Log()
 	{
 
   	//Location checks
-	Serial.print("  YRP: ");
+	Serial.println("RPY: ");
 
-  	Serial.print(Location.yaw,3); Serial.print(" "); //Yaw
   	Serial.print(Location.roll,3); Serial.print(" "); //Roll
   	Serial.print(Location.pitch,3);  Serial.print(" "); //Pitch
+  	Serial.print(Location.yaw,3); Serial.println(" "); //Yaw
 
-  	Serial.print(Location.yaw_rate,3); Serial.print(" "); //Yaw
   	Serial.print(Location.roll_rate,3); Serial.print(" "); //Roll
   	Serial.print(Location.pitch_rate,3);  Serial.print(" "); //Pitch
+  	Serial.print(Location.yaw_rate,3); Serial.println(" "); //Yaw
 
-  	Serial.println(micros());
+  	//Serial.println(micros());
 
 	}
 

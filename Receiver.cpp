@@ -95,7 +95,7 @@ void Receiver::init()
 void Receiver::read_intent()
 	{
 		
-		///*
+		/*
 		//For testing without receiver connected
 	  	Receiver.thrust = 0.8529;
 	  	Receiver.pitch = 0;
@@ -105,7 +105,7 @@ void Receiver::read_intent()
 	  	Receiver.aux2 = 0;
 	  	Receiver.dial1 = 0;
 	  	return;
-	  	//*/
+	  	*/
 
 
 
@@ -113,7 +113,7 @@ void Receiver::read_intent()
 		if (Receiver.thrust > 1.1){
 			Receiver.thrust = 0; //Problem where erroneous startup throttle caused flip
 		}
-		if (millis() < 7000){
+		if (millis() < 4000){
 			Receiver.thrust = 0; //Never start up with motors on no matter what
 		}
 		

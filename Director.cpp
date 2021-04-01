@@ -40,9 +40,11 @@ void Director::initTasks()
 
 	//_Motors.init();
 
-	//_Receiver.init();
+	_Receiver.init();
 
 	//_Location.init();
+
+	_Control.set_motor_and_servo_parameters();
 
 	//_MS5525.init(0x76);
 
@@ -212,7 +214,8 @@ void Director::callTask()
 
 		    case CONT:
 		    	Tasks[Task].last_call_time = micros();
-				_Control.run(&_Location.Location, &_Receiver.Receiver);
+				 _Control.run(&_Location.Location, &_Receiver.Receiver);
+				//_Control.MotorTest(&_Receiver.Receiver);
 				//Serial.println(Tasks[Task].last_call_time % 100000);
 		    	break;
 
