@@ -30,6 +30,8 @@ https://www.openrcforums.com/forum/viewtopic.php?f=96&t=5345
 
 */
 
+
+/*
 int ch0_start;//micros at which a certain pin went to high
 int ch0_end; //micros at which a certain pin went to low
 int ch0_us; //delta between start and finish micros when pin goes low
@@ -59,6 +61,7 @@ int ch6_start;
 int ch6_end;
 int ch6_us;
 
+
 static void ch0_PWM();
 static void ch1_PWM();
 static void ch2_PWM();
@@ -66,10 +69,14 @@ static void ch3_PWM();
 static void ch4_PWM();
 static void ch5_PWM();
 static void ch6_PWM();
+*/
 
 
 void Receiver::init()
 	{
+
+		std::cout << "Initializing receiver" << std::endl;
+		/*
 		pinMode(RECV_CHAN0PIN, INPUT);
   		pinMode(RECV_CHAN1PIN, INPUT);
   		pinMode(RECV_CHAN2PIN, INPUT);
@@ -87,6 +94,7 @@ void Receiver::init()
   		attachInterrupt(RECV_CHAN6PIN, &ch6_PWM, CHANGE);
 
   		Serial.println("CHANGE interrupts on receiver pins are set");
+  		*/
 
 	}
 
@@ -95,19 +103,23 @@ void Receiver::init()
 void Receiver::read_intent()
 	{
 		
-		/*
+		//std::cout << "Reading receiver" << std::endl;
+
+		///*
 		//For testing without receiver connected
-	  	Receiver.thrust = 0.8529;
-	  	Receiver.pitch = 0;
-	  	Receiver.roll = 0;
-	  	Receiver.yaw = 0;
-	  	Receiver.aux1 = 0;
-	  	Receiver.aux2 = 0;
-	  	Receiver.dial1 = 0;
+	  	Current_Receiver_Values.thrust = 0.8529;
+	  	Current_Receiver_Values.pitch = 0;
+	  	Current_Receiver_Values.roll = 0;
+	  	Current_Receiver_Values.yaw = 0;
+	  	Current_Receiver_Values.aux1 = 0;
+	  	Current_Receiver_Values.aux2 = 0;
+	  	Current_Receiver_Values.dial1 = 0;
+
+
 	  	return;
-	  	*/
+	  	//*/
 
-
+/*
 
 		Receiver.thrust = ((float)ch0_us - MIN_PWM_THRUST) / (float)(MAX_PWM_THRUST - MIN_PWM_THRUST);
 		if (Receiver.thrust > 1.1){
@@ -143,10 +155,24 @@ void Receiver::read_intent()
 		Receiver.aux2 = ((float)ch5_us - MIN_PWM_AUX2) / (float)(MAX_PWM_AUX2 - MIN_PWM_AUX2);
 
 		Receiver.dial1 = ((float)ch6_us - (MIN_PWM_DIAL1 + MAX_PWM_DIAL1)/2) / (float)(MAX_PWM_DIAL1 - (MIN_PWM_DIAL1 + MAX_PWM_DIAL1)/2);
-
+*/
 
 
 	}
+
+
+
+/*
+float Receiver::get_receiver_values()
+	{
+
+		printf("Recv Thrust: %f\n", Receiver.thrust);
+
+		return Receiver.thrust;
+
+
+	}
+	*/
 
 
 
@@ -155,6 +181,9 @@ void Receiver::Log()
 		
 
 		//Receiver checks
+		std::cout << "Logging receiver" << std::endl;
+
+		/*
 		Serial.print("  Rx: ");
 
 	  	Serial.print(Receiver.thrust); Serial.print(" ");
@@ -166,12 +195,13 @@ void Receiver::Log()
 	  	Serial.print(Receiver.dial1);  Serial.print(" ");
 
 	  	//Serial.println(micros());
+	  	*/
 
 
 	}
 
 
-
+/*
 void ch0_PWM()
 	{ 
 	  int ch0_pin = digitalRead(RECV_CHAN0PIN);
@@ -266,3 +296,5 @@ void ch6_PWM()
 	    ch6_us = ch6_end - ch6_start; //Only calculate us when it turns off.
 	  }
 	}
+
+	*/

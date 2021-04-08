@@ -1,33 +1,30 @@
 #ifndef AUTOPILOT2_CONTROL_H
 #define AUTOPILOT2_CONTROL_H
 
-#include <Arduino.h>
+//#include "main.h"
 
+//#include <Arduino.h>
+
+
+#include <iostream>
+#include <cstdio>
+#include <chrono>
+#include <cstdint>
+
+#include <Eigen/LU> 
+#include <Eigen/QR>
+
+#include "XPlane.h"
 #include "Location.h"
 #include "Receiver.h"
 
-//https://github.com/moritzmaier/Eigen
-//Notes on porting Eigen for Arduino: https://forum.pjrc.com/threads/41929-How-to-install-use-Eigen-template-library
-#include <Eigen.h>     // Calls main Eigen matrix class library
-#include <Eigen/LU>    // Calls inverse, determinant, LU decomp., etc.
-#include <Eigen/QR>
-using namespace Eigen;
+
+
+
 
 #define e 2.718281828
 
-#define FRONT_RIGHT_SERVO_PIN 2
-#define FRONT_LEFT_SERVO_PIN 3
-#define BACK_RIGHT_SERVO_PIN 4
-#define BACK_LEFT_SERVO_PIN 5
 
-#define FRONT_RIGHT_MOT_PIN 6
-#define FRONT_LEFT_MOT_PIN 7
-#define BACK_RIGHT_MOT_PIN 8
-#define BACK_LEFT_MOT_PIN 9
-#define BACK_MID_RIGHT_MOT_PIN 10
-#define BACK_MID_LEFT_MOT_PIN 11
-#define BACK_FAR_RIGHT_MOT_PIN 12
-#define BACK_FAR_LEFT_MOT_PIN 13
 
 
 
@@ -38,13 +35,36 @@ class Control
 
 	public:
 
+		std::chrono::steady_clock::time_point program_start_time;
+
+		std::chrono::steady_clock::time_point loop_end_time;
+
+		std::chrono::steady_clock::time_point last_loop_end_time;
+
+
+		//Make pointers to location and receiver structs available to all functions
+		Location::LOCATION * Current_Location_ptr;
+
+		Receiver::RECEIVER * Current_Receiver_Values_ptr;
+
+
+		unsigned int loop_time_us;
+		unsigned int loop_time2;
+
+		unsigned int loop_time3;
+
+		float loop_time = 0.001;
+
+		//unsigned int last_loop_end_time;
+
+
 		float vehicle_mass = 4; //Vehicle mass in kg.
 		float roll_moment_of_inertia = 0.295; //Roll moment of inertia in kg*m^2
 		float pitch_moment_of_inertia = 0.872; //Pitch moment of inertia in kg*m^2
 		float yaw_moment_of_inertia = 1.165; //Yaw moment of inertia in kg*m^2
 
 		float commands_sent_time; //Time of start of control loop in microseconds
-		float loop_time = 0.015; //Loop time in seconds.  Updated as loop runs.
+		//float loop_time = 0.015; //Loop time in seconds.  Updated as loop runs.
 
 
 		float servo_supply_voltage = 6.21;
@@ -55,12 +75,18 @@ class Control
 		float test_pwm = 1040;
 		
 
-		MatrixXf target_accelerations;
-		MatrixXf target_forces_and_moments;
-		MatrixXf theoretical_rot_vel_and_servo_angle_deltas;//(12,1).  Delta rotational velocities and servo angles needed to reach desired forces and moments.  Not likely possible in next timestep
-		MatrixXf next_loop_rot_vel_and_servo_angle_deltas;//(12,1);  Delta rotational velocities and servo angles to apply in next loop time
+		Eigen::MatrixXf end_of_loop_motor_vels_and_servo_angles; //Rotational velocities and servo angles at end of current loop packaged as Eigen::MatrixXf
 
+		Eigen::MatrixXf target_accelerations;
+		Eigen::MatrixXf target_forces_and_moments;
+		Eigen::MatrixXf theoretical_rot_vel_and_servo_angle_deltas;//(12,1).  Delta rotational velocities and servo angles needed to reach desired forces and moments.  Not likely possible in next timestep
+		Eigen::MatrixXf next_loop_rot_vel_and_servo_angle_deltas;//(12,1);  Delta rotational velocities and servo angles to apply in next loop time
 
+		Eigen::MatrixXf theoretical_fan_forces_and_moments;
+
+		Eigen::MatrixXf end_of_loop_theoretical_fan_forces_and_moments;
+
+		Eigen::MatrixXf targets;
 
 		/*
 		Parameters of motor controller
@@ -82,7 +108,7 @@ class Control
 
 
 
-		/*
+ 		/*
 		Parameters of motor controller
 
 		*/
@@ -143,11 +169,14 @@ class Control
 			int gpio_pin; //GPIO pin servicing motor controller
 			int servo_num; //Index of servo servicing propulsion unit
 
-			float rotational_velocity; //Fan rotational velocity in rad/sec at time last commands sent
+			float rotational_velocity; //Fan rotational velocity in rad/sec at the end of the current loop
+			float fan_thrust; //Fan thrust at the end of the current loop in Newtons
+			float fan_torque; //Fan thrust and beginning of current loop in Nm
 
 			//Calculated at beginning of each loop, after updating motor rotational velocity, with calculate_motor_operating_limits(int fan_number)
 			float max_torque_at_current_rot_vel; //Max torque theoretically possible at current rotational velocity (may not be possible to reach because of controller PI loop)
 			float max_rotational_velocity; //Rotational velocity reached once in steady state at max pulse length
+			float max_rot_vel_thrust; //Maximum steady state thrust in current flight condition
 			float max_rot_vel_output_power; //Output power reached once in steady state at max pulse length
 			float max_rot_vel_input_power; //Input power reached once in steady state at max pulse length
 			float max_rot_vel_efficiency; //Efficiency (output power / input power) reached once in steady state at max pulse length
@@ -254,7 +283,7 @@ class Control
 
 			float angle_delta_required; //Servo angle delta target between end of current timestep and end of next timestep
 			float commanded_servo_acc; //Commanded rotational acceleration in rad/s^2 at time last commands sent
-			float PWM_micros; //PWM microseconds sent at end of last control loop
+			float PWM_micros = 1040; //PWM microseconds sent at end of last control loop
 
 		} ;
 
@@ -317,19 +346,19 @@ class Control
 		struct FORCES_AND_MOMENTS
 		{
 
-			//Rotational accelerations in rad/s^2
+			//Rotational moments in Nm
 			float roll_moment;
 			float pitch_moment;
 			float yaw_moment;
 
-			//Translational accelerations in m/s^2
-			float x_force;
-			float z_force;
+			//Translational force in Newtons
+			float x_force; //Forward is positive
+			float z_force; //Upwards is positive
 
 		} ;
 
 		FORCES_AND_MOMENTS Target_Forces_and_Moments;
-		FORCES_AND_MOMENTS Theoretical_Fan_Forces_and_Moments;
+		FORCES_AND_MOMENTS Theoretical_End_of_Loop_Fan_Forces_and_Moments;
 
 
 
@@ -419,6 +448,7 @@ class Control
 		COMMANDS Commands;
 
 
+		//Location::LOCATION * Current_location_ptr;
 
 
 	public:
@@ -431,6 +461,8 @@ class Control
 		void get_end_of_loop_rot_vels_and_servo_angles();
 		void get_end_of_loop_fan_rotational_velocity(int fan_number);
 		void get_end_of_loop_servo_angle_and_rotational_velocity(int servo_num);
+
+		Eigen::MatrixXf get_end_of_loop_theoretical_fan_forces_and_moments();
 
 		void get_motor_operating_limits();
 		void calculate_motor_operating_limits(int fan_number);
@@ -446,14 +478,14 @@ class Control
 		POWERTRAIN_MODEL_OUTPUT run_powertrain_model(int fan_number, float PWM_micros);
 		SERVO_MODEL_OUTPUT run_servo_model(int servo_num, float PWM_micros);
 
-		MatrixXf get_kinematics_derivatives(MatrixXf motor_vels_and_servo_angles);
+		Eigen::MatrixXf get_kinematics_derivatives(Eigen::MatrixXf motor_vels_and_servo_angles);
 		
 
-		MatrixXf calculate_theoretical_fan_forces_and_moments(MatrixXf motor_vels_and_servo_angles);
-		MatrixXf calculate_kinematics_derivatives(MatrixXf control_guess);
+		Eigen::MatrixXf calculate_theoretical_fan_forces_and_moments(Eigen::MatrixXf motor_vels_and_servo_angles);
+		Eigen::MatrixXf calculate_kinematics_derivatives(Eigen::MatrixXf control_guess);
 		//MatrixXf calculate_gradient_descended_control_guess(MatrixXf control_guess, MatrixXf target_forces_and_moments);
 
-		void get_theoretical_rot_vel_and_servo_angle_deltas();
+		Eigen::MatrixXf get_theoretical_rot_vel_and_servo_angle_deltas(Eigen::MatrixXf target_forces_and_moments);
 		void get_next_loop_rot_vel_and_servo_angle_deltas();
 
 
@@ -470,21 +502,28 @@ class Control
 		void servo_acc_required_to_pwm(int servo_num);
 
 
-		void acceleration_controller(Location::LOCATION *, Receiver::RECEIVER *);
-		void accelerations_to_forces_and_moments();
+		//void acceleration_controller(Location::LOCATION *, Receiver::RECEIVER *);
+		Eigen::MatrixXf acceleration_controller();
+
+		Eigen::MatrixXf accelerations_to_forces_and_moments(Eigen::MatrixXf target_accelerations);
 		void forces_and_moments_to_thrusts_and_angles(Control::FORCES_AND_MOMENTS *);
 		void thrusts_and_angles_to_pwms(Control::THRUSTS_AND_ANGLES *);
 
 		void update_motor_controller_error_integral(int fan_number, float PWM_micros);
 		void send_pwms();
 		void send_microseconds(int motor_pin, float microseconds);
+		void send_XPlane_inputs();
+
+		//void run();
 		void run(Location::LOCATION *, Receiver::RECEIVER *);
 
 
+		//Location::LOCATION test;
 
-		void MotorTest(Receiver::RECEIVER *);
 
-		void print_mtxf(const Eigen::MatrixXf& K);
+//		void MotorTest(Receiver::RECEIVER *);
+
+		//void print_mtxf(const Eigen::MatrixXf& K);
 
 		float Pitch_Rate_P; //How much to accelerate towards target rate.  More than about 0.03 on Deathtrap and starts to shake.
 		float Roll_Rate_P; //0.1, with sqrt p = 6, -> 1.8 for 10 deg with no rate (3 and 1 for 10 deg, no rate PID pitch, roll)
@@ -495,9 +534,9 @@ class Control
 
 
 
-		void run2(Location::LOCATION *, Receiver::RECEIVER *);
-		void Log();
-		void MotorTest2(Receiver::RECEIVER *);
+//		void run2(Location::LOCATION *, Receiver::RECEIVER *);
+//		void Log();
+//		void MotorTest2(Receiver::RECEIVER *);
 
 };
 

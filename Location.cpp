@@ -1,8 +1,9 @@
 #include "Location.h"
-
+/*
 #include <Wire.h>
 #define SDAPIN 20
 #define CLKPIN 21
+*/
 /*
 Key thing about the BNO055 is fusion data is produced at 100 Hz - reading significantly faster than this (around 200 Hz) causes
 it to return only zeroes.
@@ -43,11 +44,17 @@ Braswell chip has ~1,100 pins.  7 I2C channels (14 pins).
 
 */
 
-Adafruit_BNO055 bno = Adafruit_BNO055(55);
+XPlane XPlane_for_Location;
+
+//Adafruit_BNO055 bno = Adafruit_BNO055(55);
 
 void Location::init()
 	{
 
+
+		std::cout << "Starting IMU" << std::endl;
+
+/*
 	  //BNO055 reset - (Due pin 39 connected to BNO055 RST pin).  Need to do this after restarting after a bus loss or else have to try a couple times.
 	  
 	  pinMode(39, OUTPUT);
@@ -56,8 +63,6 @@ void Location::init()
 	  digitalWrite(39, HIGH);
 	  delay(650);
 	   
-
-//	   /*
 
 	   while(!bno.begin())
 	  {
@@ -96,7 +101,7 @@ void Location::init()
 
 		bno.setExtCrystalUse(true);
 
-//*/
+*/
 
 	}
 
@@ -106,24 +111,43 @@ void Location::init()
 void Location::estimate()
 	{
 
-	int start = micros();
+	//int start = micros();
 
 ///*
+
+
+	XPlane_for_Location.get_data_from_XPlane();	
+
+	Current_Location.pitch = XPlane_for_Location.Current_XPlane_data.pitch_rad;
+	Current_Location.roll = XPlane_for_Location.Current_XPlane_data.roll_rad;
+	Current_Location.heading = XPlane_for_Location.Current_XPlane_data.heading_rad;
+	Current_Location.pitch_rate = XPlane_for_Location.Current_XPlane_data.pitch_rot_vel_calcd;
+	Current_Location.roll_rate = XPlane_for_Location.Current_XPlane_data.roll_rot_vel_calcd;
+	Current_Location.heading_rate = XPlane_for_Location.Current_XPlane_data.heading_rot_vel_calcd;
+	Current_Location.time = XPlane_for_Location.Current_XPlane_data.flight_time;
+
+
+
+
 	//For testing without IMU connected
-	Location.pitch = 0.1;
-	Location.roll = -0.1;
-	Location.yaw = -0.1;
-	Location.pitch_rate = 0;
-	Location.roll_rate = 0;
-	Location.yaw_rate = 0;
+	/*
+	Current_Location.pitch = 0.1;
+	Current_Location.roll = -0.1;
+	Current_Location.yaw = -0.1;
+	Current_Location.pitch_rate = 0;
+	Current_Location.roll_rate = 0;
+	Current_Location.yaw_rate = 0;
+	*/
+
+
 	return;
 //*/
 
 
-	int starting = micros();
-	timeSinceReset = millis() - lastReset;
+	//int starting = micros();
+	//timeSinceReset = millis() - lastReset;
 
-	
+	/*
 
 	//Do I2C bus recovery every time 0 only takes a few microseconds and prevents bus from dropping
 	//try i2c bus recovery at 100kHz = 5uS high, 5uS low
@@ -158,7 +182,7 @@ void Location::estimate()
   	//Haven't figured out why, but getEvent works (doesn't return zeros after a while) and getGv
     bno.getEvent(&orientationEvent, Adafruit_BNO055::VECTOR_EULER);
     bno.getEvent(&ratesEvent, Adafruit_BNO055::VECTOR_GYROSCOPE);
-
+*/
 
 
 /*
@@ -168,9 +192,11 @@ Problem is, if reset in air, new zero will be in whatever position it's reset in
 were beforehand
 
 */
+	
+	/*
 	if (orientationEvent.orientation.z == 0 && orientationEvent.orientation.y == 0 && orientationEvent.orientation.x == 0  && \
 		ratesEvent.gyro.z == 0 && ratesEvent.gyro.y == 0 && ratesEvent.gyro.x == 0 && timeSinceReset > 2000){
-		/*
+		
 			digitalWrite(39, LOW);
 			delayMicroseconds(1);
 			digitalWrite(39, HIGH);
@@ -182,7 +208,7 @@ were beforehand
 			Wire.write(0x0C);
 			Wire.endTransmission();      // Send and keep connection alive.
 
-*/
+
 
 
 			bno.begin();
@@ -208,9 +234,7 @@ were beforehand
 	else{
 		Location.yaw = orientationEvent.orientation.x * M_PI/180;
 	}
-
-
-
+*/
 
 /*
   	if (abs(last_pitch-Location.pitch) > 5){ //If sensor messed up, use last measurement instead
@@ -257,11 +281,13 @@ were beforehand
 	*/
 
   	//Different signs from euler orientations - values in degrees per second (even though Adafruit library documentation says rad/sec)
-  	Location.pitch_rate = -ratesEvent.gyro.x * M_PI / 180;
+ 
+ /* 	Location.pitch_rate = -ratesEvent.gyro.x * M_PI / 180;
   	Location.roll_rate = -ratesEvent.gyro.y * M_PI / 180;
   	Location.yaw_rate = -ratesEvent.gyro.z * M_PI / 180;
+  	*/
 
-
+/*
 
   	  	//Location checks
 	Serial.println("RPY: ");
@@ -293,6 +319,8 @@ were beforehand
 	last_pitch_rate = Location.pitch_rate;
 	last_yaw_rate = Location.yaw_rate;
 	//last_time = meas_time;
+
+	*/
  /* 	
   	imu::Vector<3> euler = bno.getVector(Adafruit_BNO055::VECTOR_EULER);
   	imu::Vector<3> euler_rates = bno.getVector(Adafruit_BNO055::VECTOR_GYROSCOPE);
@@ -339,7 +367,12 @@ were beforehand
 void Location::Log()
 	{
 
+
   	//Location checks
+	std::cout << "IMU Log" << std::endl;
+
+/*
+
 	Serial.println("RPY: ");
 
   	Serial.print(Location.roll,3); Serial.print(" "); //Roll
@@ -351,6 +384,7 @@ void Location::Log()
   	Serial.print(Location.yaw_rate,3); Serial.println(" "); //Yaw
 
   	//Serial.println(micros());
+  	*/
 
 	}
 

@@ -1,14 +1,19 @@
 #ifndef AUTOPILOT2_DIRECTOR
 #define AUTOPILOT2_DIRECTOR
 
+//#include "main.h"
+//#include "Control.h"
+
+/*
 #include "Motors.h"
 #include "Receiver.h"
 #include "Location.h"
-#include "Control.h"
+
 
 #include "MS5525.h"
 #include "MPU9250.h"
 #include "LidarLite.h"
+*/
 
 //Tasks
 #define RECV 0		//Get receiver intent
@@ -59,14 +64,19 @@ class Director
 
 	private:
 
+
+		
+
+/*
 		Motors _Motors;
 		Receiver _Receiver;
 		Location _Location;
-		Control _Control;
+		
 
 		MS5525 _MS5525;
 		MPU9250 _MPU9250;
 		LidarLite _LidarLite;
+		*/
 
 
 };

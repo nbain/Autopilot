@@ -25,26 +25,32 @@ This function could get extremely sophisticated, acting like a real flight direc
 
 */
 
-
-#include "Arduino.h"
 #include "Director.h"
 
-#include <Wire.h>
+
+//#include "Arduino.h"
+//#include <Wire.h>
+
+Eigen::MatrixXf target_accelerations;
 
 
 void Director::initTasks()
 {
 
-	Serial.begin(115200);
+		float b = 35;
+
+	std::cout << b << std::endl;
+
+//	Serial.begin(115200);
 
 
 	//_Motors.init();
 
-	_Receiver.init();
+	//_Receiver.init();
 
 	//_Location.init();
 
-	_Control.set_motor_and_servo_parameters();
+	//_Control.set_motor_and_servo_parameters();
 
 	//_MS5525.init(0x76);
 
@@ -82,7 +88,8 @@ void Director::callTask()
 
 ///*
 
-	us = micros();
+	//us = micros();
+	float us = 100; //Temporary
 	critical_task = false; //Default to no critical task needing to be done - will change to true if any tasks ready
 	mostTimeElapsed = 0; //Should start at zero and then, if tasks need to be done, get assigned increasingly negative values
 
@@ -123,7 +130,8 @@ void Director::callTask()
 	//If no critical tasks need to be done, use this time to write to the log/record non-critical sensor data
 	if (not critical_task){
 
-			int log_start = micros();
+			//int log_start = micros();
+			int log_start = 101;
 			//int log_stop = log_start + leastTimeLeft; //Time by which logging must be finished -
 			//from old way of setting max us between calls - probably good to do something similar so do multiple non-critical tasks in one loop
 
@@ -147,7 +155,7 @@ void Director::callTask()
 			    	break;
 
 			   	case 2:
-					_Receiver.Log();
+					//_Receiver.Log();
 					log_num = log_num + 1;
 			    	break;
 
@@ -199,28 +207,28 @@ void Director::callTask()
 
 		switch (Task) {
 	  		case RECV:
-	  			Tasks[Task].last_call_time = micros();
-				_Receiver.read_intent();
+	  			//Tasks[Task].last_call_time = micros();
+				//_Receiver.read_intent();
 				//Serial.print("R");
 				//Serial.println(Tasks[Task].last_call_time % 100000);
 		    	break;
 
 		   	case LOC:
-				Tasks[Task].last_call_time = micros();
-				_Location.estimate();
+				//Tasks[Task].last_call_time = micros();
+				//_Location.estimate();
 				//Serial.print("L");
 				//Serial.println(Tasks[Task].last_call_time % 100000);
 		    	break;
 
 		    case CONT:
-		    	Tasks[Task].last_call_time = micros();
-				 _Control.run(&_Location.Location, &_Receiver.Receiver);
+		    	//Tasks[Task].last_call_time = micros();
+				 //_Control.run(&_Location.Location, &_Receiver.Receiver);
 				//_Control.MotorTest(&_Receiver.Receiver);
 				//Serial.println(Tasks[Task].last_call_time % 100000);
 		    	break;
 
 		    case MOT:
-		    	Tasks[Task].last_call_time = micros();
+		    	//Tasks[Task].last_call_time = micros();
 				//_Motors.sendMotorSignals(&_Control.Commands);
 				//Serial.print("M");
 				//Serial.println(Tasks[Task].last_call_time % 100000);

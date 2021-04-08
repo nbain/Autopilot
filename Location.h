@@ -1,10 +1,29 @@
 #ifndef AUTOPILOT2_LOCATION_H
 #define AUTOPILOT2_LOCATION_H
 
+#include <iostream>
+#include <cstdio>
+
+#include "XPlane.h"
+
+/*
+Seems to be a circular dependency which causes include errors/not recognizing something has been included.
+https://stackoverflow.com/questions/625799/resolve-build-errors-due-to-circular-dependency-amongst-classes
+
+Instead of doing #include "XPlane.h", use class XPlane (not super clear )
+*/
+//class XPlane;
+
+//#include "main.h"
+
+/*
 #include <Arduino.h>
 #include <Adafruit_Sensor.h>
 #include <Adafruit_BNO055.h>
 #include <utility/imumaths.h>
+*/
+
+
 
 
 class Location
@@ -18,10 +37,12 @@ class Location
 		void estimate();
 		void Log();
 
-		imu::Vector<3> euler;
-		imu::Vector<3> euler_rates;
 
-		sensors_event_t orientationEvent, ratesEvent;
+		//imu::Vector<3> euler;
+		//imu::Vector<3> euler_rates;
+		//sensors_event_t orientationEvent, ratesEvent;
+
+
 		int timeSinceReset;
 		int lastReset = 7000;
 		int reset_count;
@@ -51,11 +72,11 @@ class Location
 
 			float pitch; //In radians 
 			float roll;
-			float yaw; //From -PI to PI
+			float heading; //From 0 to 2*PI with true north = 0
 
 			float pitch_rate; //In rad/sec. 
 			float roll_rate;
-			float yaw_rate;
+			float heading_rate;
 
 			float pitch_acc;
 			float roll_acc;
@@ -64,11 +85,11 @@ class Location
 
 			//Will fill in position - lat, long, height MSL - when ready
 
-			unsigned int timestamp; //In microseconds.  Limit for each of these is 4.3 billion, so weird after an hour
+			float time; //In seconds. 
 
 		};
 
-		LOCATION Location; //Most recent location data
+		LOCATION Current_Location; //Most recent location data
 
 
 
