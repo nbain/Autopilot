@@ -4,13 +4,6 @@
 #include "Control.h"
 
 
-#define MOTORS_PWM_FREQ 1000 //Hz
-/*This doesn't actually change the PWM frequency sent by analogWrite()
-To change the PWM frequency sent out, must change the Arduino library by rewriting PWM_FREQUENCY and TC_FREQUENCY in Variant.h
-To get to Variant.h, go to Finder and click Go (at top), then click Library.  Then Arduino15 folder is near the bottom
-In Arduino 15: packages/arduino/hardware/sam/1.6.11/variants/arduino_due_x/variant.h
-Note: PWM_FREQUENCY only affects pins 6,7,8,9, and TC_FREQUENCY affects the rest.
-*/
 
 //PWM range where have some effect on the motor
 #define MOT_PWM_MIN 1000
@@ -65,12 +58,12 @@ no front-back force, no yaw moment constraint (fully constrained - only one poss
 
 #define FRONT_RIGHT_MOT_PIN 6
 #define FRONT_LEFT_MOT_PIN 7
-#define BACK_RIGHT_MOT_PIN 8
-#define BACK_LEFT_MOT_PIN 9
-#define BACK_MID_RIGHT_MOT_PIN 10
-#define BACK_MID_LEFT_MOT_PIN 11
-#define BACK_FAR_RIGHT_MOT_PIN 12
-#define BACK_FAR_LEFT_MOT_PIN 13
+#define BACK_RIGHT_MOT_PIN 8 //Blue
+#define BACK_LEFT_MOT_PIN 9 //Blue
+#define BACK_MID_RIGHT_MOT_PIN 10  //Orange
+#define BACK_MID_LEFT_MOT_PIN 11  //Orange
+#define BACK_FAR_RIGHT_MOT_PIN 12  //Green
+#define BACK_FAR_LEFT_MOT_PIN 13  //Green
 
 
 
@@ -95,6 +88,7 @@ class Motors
 		int front_left_servo_micros;
 		int back_right_servo_micros;
 		int back_left_servo_micros;
+
 
 		
 

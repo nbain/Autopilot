@@ -25,26 +25,34 @@ This function could get extremely sophisticated, acting like a real flight direc
 
 */
 
-
-#include "Arduino.h"
 #include "Director.h"
 
-#include <Wire.h>
+
+//#include "Arduino.h"
+//#include <Wire.h>
+
+Eigen::MatrixXf target_accelerations;
 
 
 void Director::initTasks()
 {
 
-	Serial.begin(115200);
+		float b = 35;
+
+	std::cout << b << std::endl;
+
+//	Serial.begin(115200);
 
 
-	_Motors.init();
+	//_Motors.init();
 
-	_Receiver.init();
+	//_Receiver.init();
 
-	_Location.init();
+	//_Location.init();
 
-	_MS5525.init(0x76);
+	//_Control.set_motor_and_servo_parameters();
+
+	//_MS5525.init(0x76);
 
 	//_MPU9250.init();
 
@@ -59,8 +67,8 @@ void Director::initTasks()
 	Tasks[CONT].min_us = 8000;
 	Tasks[CONT].last_call_time = 0;
 
-	Tasks[MOT].min_us = 8000;
-	Tasks[MOT].last_call_time = 0;
+	//Tasks[MOT].min_us = 8000;
+	//Tasks[MOT].last_call_time = 0;
 
 }
 
@@ -80,7 +88,8 @@ void Director::callTask()
 
 ///*
 
-	us = micros();
+	//us = micros();
+	float us = 100; //Temporary
 	critical_task = false; //Default to no critical task needing to be done - will change to true if any tasks ready
 	mostTimeElapsed = 0; //Should start at zero and then, if tasks need to be done, get assigned increasingly negative values
 
@@ -121,7 +130,8 @@ void Director::callTask()
 	//If no critical tasks need to be done, use this time to write to the log/record non-critical sensor data
 	if (not critical_task){
 
-			int log_start = micros();
+			//int log_start = micros();
+			int log_start = 101;
 			//int log_stop = log_start + leastTimeLeft; //Time by which logging must be finished -
 			//from old way of setting max us between calls - probably good to do something similar so do multiple non-critical tasks in one loop
 
@@ -139,18 +149,18 @@ void Director::callTask()
 			    	break;
 
 		  		case 1:
-					_Control.Log();
+					//_Control.Log();
 		  			//_Control.MotorTest(&_Receiver.Receiver);
 					log_num = log_num + 1;
 			    	break;
 
 			   	case 2:
-					_Receiver.Log();
+					//_Receiver.Log();
 					log_num = log_num + 1;
 			    	break;
 
 			    case 3:
-					_Location.Log();
+					//_Location.Log();
 					log_num = log_num + 1;
 			    	break;
 
@@ -170,8 +180,8 @@ void Director::callTask()
 			    	break;
 
 			    case 7:
-			    	_MS5525.readPressure();
-			    	_MS5525.Log();
+			    	//_MS5525.readPressure();
+			    	//_MS5525.Log();
 					log_num = log_num + 1;
 			    	break;
 
@@ -197,29 +207,29 @@ void Director::callTask()
 
 		switch (Task) {
 	  		case RECV:
-	  			Tasks[Task].last_call_time = micros();
-				_Receiver.read_intent();
+	  			//Tasks[Task].last_call_time = micros();
+				//_Receiver.read_intent();
 				//Serial.print("R");
 				//Serial.println(Tasks[Task].last_call_time % 100000);
 		    	break;
 
 		   	case LOC:
-				Tasks[Task].last_call_time = micros();
-				_Location.estimate();
+				//Tasks[Task].last_call_time = micros();
+				//_Location.estimate();
 				//Serial.print("L");
 				//Serial.println(Tasks[Task].last_call_time % 100000);
 		    	break;
 
 		    case CONT:
-		    	Tasks[Task].last_call_time = micros();
-				_Control.run(&_Location.Location, &_Receiver.Receiver);
-				//Serial.print("C");
+		    	//Tasks[Task].last_call_time = micros();
+				 //_Control.run(&_Location.Location, &_Receiver.Receiver);
+				//_Control.MotorTest(&_Receiver.Receiver);
 				//Serial.println(Tasks[Task].last_call_time % 100000);
 		    	break;
 
 		    case MOT:
-		    	Tasks[Task].last_call_time = micros();
-				_Motors.sendMotorSignals(&_Control.Commands);
+		    	//Tasks[Task].last_call_time = micros();
+				//_Motors.sendMotorSignals(&_Control.Commands);
 				//Serial.print("M");
 				//Serial.println(Tasks[Task].last_call_time % 100000);
 		    	break;
