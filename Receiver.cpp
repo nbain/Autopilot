@@ -78,10 +78,10 @@ void Receiver::init()
 		std::cout << "Initializing receiver" << std::endl;
 		setup_port();
 		std::cout << "Finished setting up serial port...\n";
-		setGPIO(0);
-		std::cout << "GPIO pin set to logic LOW...\n";
-		turnon_GPIO();
-		std::cout << "GPIO pin is enabled to OUT...\n";
+		//setGPIO(0);
+		//std::cout << "GPIO pin set to logic LOW...\n";
+		//turnon_GPIO();
+		//std::cout << "GPIO pin is enabled to OUT...\n";
 		/*
 		pinMode(RECV_CHAN0PIN, INPUT);
   		pinMode(RECV_CHAN1PIN, INPUT);
@@ -122,8 +122,14 @@ void Receiver::setGPIO(int state) {
 	gpio.close();
 }
 
+void Receiver::requestData() {
+	int n = write(serial_port, &writeMarker, sizeof(writeMarker));
+}
+
 void Receiver::readData() {
-	setGPIO(1); // set GPIO pin to logic high, telling Arduino that we want data
+	//setGPIO(1); // set GPIO pin to logic high, telling Arduino that we want data
+	requestData();
+
 	dataAvailable = true;
 	static bool recvInProgress = false;
 	static int indx = 0;
@@ -156,13 +162,12 @@ void Receiver::readData() {
 	  			}
 	  			else {
 					//cout << "Received message: " << receivedMsg << endl;
-					convertMessage();
-					//estimate();				
+					convertMessage();			
 					receivedMsg[0] = '\0'; // clear the message buffer
 	   			 	recvInProgress = false;
 					indx = 0;
 					dataAvailable = false;
-					setGPIO(0); // finished reading data, set GPIO pin to logic LOW
+					//setGPIO(0); // finished reading data, set GPIO pin to logic LOW
 	  			}
 			}
 			else if (incomingByte[0] == startMarker) {

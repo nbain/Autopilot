@@ -59,10 +59,10 @@ void Location::init()
 		// buffer array that holds the PWMs to send to the Arduino over Serial
 		setup_port();
 		std::cout << "Finished setting up serial port...\n";
-		setGPIO(0);
-		std::cout << "GPIO pin set to logic LOW...\n";
-		turnon_GPIO();
-		std::cout << "GPIO pin is enabled...\n";
+		//setGPIO(0);
+		//std::cout << "GPIO pin set to logic LOW...\n";
+		//turnon_GPIO();
+		//std::cout << "GPIO pin is enabled...\n";
 
 /*
 	  //BNO055 reset - (Due pin 39 connected to BNO055 RST pin).  Need to do this after restarting after a bus loss or else have to try a couple times.
@@ -135,7 +135,7 @@ void Location::setGPIO(int state) {
 }
 
 void Location::readData() {
-	setGPIO(1); // set GPIO pin to logic high, telling Arduino that we want data
+	//setGPIO(1); // set GPIO pin to logic high, telling Arduino that we want data
 	dataAvailable = true;
 	static bool recvInProgress = false;
 	static int indx = 0;
@@ -174,7 +174,7 @@ void Location::readData() {
 	   			 	recvInProgress = false;
 					indx = 0;
 					dataAvailable = false;
-					setGPIO(0); // finished reading data, set GPIO pin to logic LOW
+					//setGPIO(0); // finished reading data, set GPIO pin to logic LOW
 	  			}
 			}
 			else if (incomingByte[0] == startMarker) {

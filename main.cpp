@@ -96,8 +96,10 @@ int main()
 
 		start = std::chrono::steady_clock::now();
 		//_Control.send_pwms();
-		_Location.estimate();
+		//_Location.estimate();
+		_Control.send_pwms();
 		_Receiver.read_intent();
+		//_Control.run(&_Location.Current_Location, &_Receiver.Current_Receiver_Values);
 		end = std::chrono::steady_clock::now();
 		looptime = std::chrono::duration_cast<std::chrono::microseconds>(end-start).count();
 

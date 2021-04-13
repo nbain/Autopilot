@@ -67,6 +67,7 @@ class Receiver //used to be receiverModule
 		void readData();
 		void setup_port();
 		void convertMessage();
+		void requestData();
 
 		std::string path = "/dev/ttyACM0";
 		int serial_port;
@@ -76,6 +77,7 @@ class Receiver //used to be receiverModule
 		static const int numBytes = 140;
 		char startMarker = '<';
 		char endMarker = '>';
+		char writeMarker[1] = "&";
 		char incomingByte[1];
 		char receivedMsg[numBytes];
 		char* chars_array;
