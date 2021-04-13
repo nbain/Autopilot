@@ -81,7 +81,7 @@ int main()
 
 
 	_Control.set_motor_and_servo_parameters();
-	_Control.setup_port();
+	//_Control.setup_port();
 
 
 	std::cout << "Starting loop" << std::endl;

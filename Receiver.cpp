@@ -221,13 +221,13 @@ void Receiver::read_intent()
 
 		///*
 		//For testing without receiver connected
-	  	Current_Receiver_Values.thrust = convertedMsg[6];
-	  	Current_Receiver_Values.pitch = convertedMsg[7];
-	  	Current_Receiver_Values.roll = convertedMsg[8];
-	  	Current_Receiver_Values.yaw = convertedMsg[9];
-	  	Current_Receiver_Values.aux1 = convertedMsg[10];
-	  	Current_Receiver_Values.aux2 = convertedMsg[11];
-	  	Current_Receiver_Values.dial1 = convertedMsg[12];
+	  	Current_Receiver_Values.thrust = convertedMsg[0];
+	  	Current_Receiver_Values.pitch = convertedMsg[1];
+	  	Current_Receiver_Values.roll = convertedMsg[2];
+	  	Current_Receiver_Values.yaw = convertedMsg[3];
+	  	Current_Receiver_Values.aux1 = convertedMsg[4];
+	  	Current_Receiver_Values.aux2 = convertedMsg[5];
+	  	Current_Receiver_Values.dial1 = convertedMsg[6];
 
 	  	convertedMsg.clear(); // clear vector containing the data from Arduino
 
