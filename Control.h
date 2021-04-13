@@ -35,6 +35,19 @@ class Control
 
 	public:
 
+		void setup_port();
+		void writeData();
+
+		std::string path = "/dev/ttyACM0";
+		int serial_port;
+		struct termios tty;
+
+		char startMarker = '<';
+		char endMarker = '>';
+		static const int numBytes = 60;
+		char msg_buffer[numBytes];
+		char pwm[32];
+
 		std::chrono::steady_clock::time_point program_start_time;
 
 		std::chrono::steady_clock::time_point loop_end_time;
@@ -53,7 +66,7 @@ class Control
 
 		unsigned int loop_time3;
 
-		float loop_time = 0.015;
+		float loop_time = 0.001;
 
 		//unsigned int last_loop_end_time;
 
@@ -84,7 +97,6 @@ class Control
 
 		Eigen::MatrixXf theoretical_fan_forces_and_moments;
 
-		Eigen::MatrixXf end_of_loop_thrusts_and_angles;
 		Eigen::MatrixXf end_of_loop_theoretical_fan_forces_and_moments;
 
 		Eigen::MatrixXf targets;
@@ -482,13 +494,11 @@ class Control
 		Eigen::MatrixXf get_kinematics_derivatives(Eigen::MatrixXf motor_vels_and_servo_angles);
 		
 
-		Eigen::MatrixXf get_fan_forces_and_moments(Eigen::MatrixXf thrusts_and_angles);
-		Eigen::MatrixXf get_fan_forces_and_moments_from_rots(Eigen::MatrixXf rots_and_angles);
-
+		Eigen::MatrixXf calculate_theoretical_fan_forces_and_moments(Eigen::MatrixXf motor_vels_and_servo_angles);
 		Eigen::MatrixXf calculate_kinematics_derivatives(Eigen::MatrixXf control_guess);
 		//MatrixXf calculate_gradient_descended_control_guess(MatrixXf control_guess, MatrixXf target_forces_and_moments);
 
-		Eigen::MatrixXf get_theoretical_rot_vel_and_servo_angle_deltas(Eigen::MatrixXf target_forces_and_moments); //Eigen::MatrixXf target_forces_and_moments
+		Eigen::MatrixXf get_theoretical_rot_vel_and_servo_angle_deltas(Eigen::MatrixXf target_forces_and_moments);
 		void get_next_loop_rot_vel_and_servo_angle_deltas();
 
 
