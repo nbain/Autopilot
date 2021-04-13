@@ -62,6 +62,26 @@ class Receiver //used to be receiverModule
 	
 	public:
 
+		void setGPIO(int state);
+		void turnon_GPIO();
+		void readData();
+		void setup_port();
+		void convertMessage();
+
+		std::string path = "/dev/ttyACM0";
+		int serial_port;
+		struct termios tty;
+		std::ofstream gpio;
+
+		static const int numBytes = 140;
+		char startMarker = '<';
+		char endMarker = '>';
+		char incomingByte[1];
+		char receivedMsg[numBytes];
+		char* chars_array;
+		std::vector<float> convertedMsg;
+		bool dataAvailable;
+
 		struct RECEIVER
 		{
 			float thrust = 0;

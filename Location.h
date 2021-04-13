@@ -2,7 +2,19 @@
 #define AUTOPILOT2_LOCATION_H
 
 #include <iostream>
+#include <fstream>
 #include <cstdio>
+#include <string.h>
+#include <vector>
+#include <chrono>
+
+#include <fcntl.h>
+#include <errno.h>
+#include <termios.h>
+#include <unistd.h>
+#include <stdlib.h>
+#include <stdint.h>
+
 
 #include "XPlane.h"
 
@@ -37,11 +49,34 @@ class Location
 		void estimate();
 		void Log();
 
+		void setGPIO(int state);
+		void turnon_GPIO();
+		void readData();
+		void setup_port();
+		void convertMessage();
+
 
 		//imu::Vector<3> euler;
 		//imu::Vector<3> euler_rates;
 		//sensors_event_t orientationEvent, ratesEvent;
 
+		std::string path = "/dev/ttyACM0";
+		int serial_port;
+		struct termios tty;
+		std::ofstream gpio;
+
+		static const int numBytes = 140;
+		char startMarker = '<';
+		char endMarker = '>';
+		char incomingByte[1];
+		char receivedMsg[numBytes];
+		char* chars_array;
+		std::vector<float> convertedMsg;
+		bool dataAvailable;
+
+		//std::chrono::steady_clock::time_point startTime;
+		//std::chrono::steady_clock::time_point endTime;
+		//unsigned int loopTime;
 
 		int timeSinceReset;
 		int lastReset = 7000;
@@ -90,7 +125,6 @@ class Location
 		};
 
 		LOCATION Current_Location; //Most recent location data
-
 
 
 		

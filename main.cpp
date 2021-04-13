@@ -23,7 +23,7 @@ Eigen folder in eigen-3.3.9 folder copied to usr/local/include using sudo cp -r
 //#include "Director.h"
 #include "Location.h"
 #include "Receiver.h"
-#include "XPlane.h"
+//#include "XPlane.h"
 #include "Control.h"
 
 
@@ -76,24 +76,37 @@ int main()
 
 
 	//_Director.initTasks();
+	_Location.init();
+	_Receiver.init();
 
 
 	_Control.set_motor_and_servo_parameters();
+	_Control.setup_port();
 
 
 	std::cout << "Starting loop" << std::endl;
+
+	auto start = std::chrono::steady_clock::now();
+	auto end = std::chrono::steady_clock::now();
+	auto looptime = std::chrono::duration_cast<std::chrono::microseconds>(end-start).count();
 
 
 	while(true)
 	{
 
-
-
-        _Location.estimate();
-
+		start = std::chrono::steady_clock::now();
+		//_Control.send_pwms();
+		_Location.estimate();
 		_Receiver.read_intent();
+		end = std::chrono::steady_clock::now();
+		looptime = std::chrono::duration_cast<std::chrono::microseconds>(end-start).count();
 
-		_Control.run(&_Location.Current_Location, &_Receiver.Current_Receiver_Values);
+		std::cout << "Loop time: " << looptime << std::endl;
+        //_Location.estimate();
+
+		//_Receiver.read_intent();
+
+		//_Control.run(&_Location.Current_Location, &_Receiver.Current_Receiver_Values);
 		//_Control.run();
 
 		//_XPlane.send_output_to_XPlane();

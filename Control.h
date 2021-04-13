@@ -35,6 +35,19 @@ class Control
 
 	public:
 
+		void setup_port();
+		void writeData();
+
+		std::string path = "/dev/ttyACM0";
+		int serial_port;
+		struct termios tty;
+
+		char startMarker = '<';
+		char endMarker = '>';
+		static const int numBytes = 60;
+		char msg_buffer[numBytes];
+		char pwm[32];
+
 		std::chrono::steady_clock::time_point program_start_time;
 
 		std::chrono::steady_clock::time_point loop_end_time;

@@ -2321,8 +2321,40 @@ void Control::servo_angle_delta_to_pwm_required(int servo_num)
 
 	}
 
+void Control::setup_port() {
+	serial_port = open(path.c_str(), O_RDWR | O_NOCTTY);
 
+	if(serial_port < 0) {
+		printf("Error %i from open: %s\n", errno, strerror(errno));			
+	}
 
+	// Read in existing settings, and handle any error
+	if(tcgetattr(serial_port, &tty) != 0) {
+		printf("Error %i from tcgetattr: %s\n", errno, strerror(errno));
+	}
+
+	tty.c_lflag |= ICANON; // run in canonical mode (receive data line by line)
+	tty.c_cflag &= ~CRTSCTS; // disable hardware flow control	
+
+	//tty.c_cc[VTIME] = 0; // no timeout
+	//tty.c_cc[VMIN] = 1; // always wait for 1 byte 
+
+	//tty.c_cflag |= CS8; // 8 bits per byte
+	cfsetispeed(&tty, B460800);
+	cfsetospeed(&tty, B460800);
+
+	// Save tty settings, also checking for error
+  	if (tcsetattr(serial_port, TCSANOW, &tty) != 0) {
+  		printf("Error %i from tcsetattr: %s\n", errno, strerror(errno));
+  	}
+}
+
+void Control::writeData() {
+	//setGPIO(0);
+	int n = write(serial_port, &msg_buffer, sizeof(msg_buffer));
+	std::cout << "Sent message: " << msg_buffer << std::endl;
+	msg_buffer[0] = '\0'; // clear the message buffer
+}
 
 
 /*
@@ -2334,26 +2366,34 @@ void Control::servo_angle_delta_to_pwm_required(int servo_num)
 */
 void Control::send_pwms()
 {
-
+	strcpy(msg_buffer, "<");
 	//Send motor PWMs to GPIOs
 	for (int i=0; i<8; i++)
     	{
 
     		//Send pulse to GPIO pin
-			send_microseconds(propulsion_units[i].gpio_pin, propulsion_units[i].PWM_micros);
-
+			//send_microseconds(propulsion_units[i].gpio_pin, propulsion_units[i].PWM_micros);
+			//send_microseconds(0, 1000*(i+1));
+			sprintf(pwm, "%d", 100*(i+1));
+			strcat(msg_buffer, pwm);
+			strcat(msg_buffer, ",");
 		}
 	
 
-	/*
+	
 	//Send servo PWMs to GPIOs
 	for (int i=0; i<4; i++)
     	{
-			send_microseconds(servo_units[i].gpio_pin, servo_units[i].PWM_micros);
-
+			//send_microseconds(servo_units[i].gpio_pin, servo_units[i].PWM_micros);
+			//send_microseconds(0, 1000*(i+1));
+			sprintf(pwm, "%d", 100*(i+1));
+			strcat(msg_buffer, pwm);
+			if(i != 3) 
+				strcat(msg_buffer, ",");
 		}
-*/
 
+	strcat(msg_buffer, ">");
+	writeData();
 }
 
 
@@ -2403,6 +2443,9 @@ void Control::send_microseconds(int motor_pin, float microseconds)
 	if (microseconds > PWM_period_micros){
 		nearest_bit_value = 1022;
 	}
+
+	sprintf(pwm, "%d", nearest_bit_value);
+	strcat(msg_buffer, pwm);
 
 	//analogWriteResolution(12);
 	//analogWrite(motor_pin, nearest_bit_value);

@@ -45,6 +45,8 @@ Braswell chip has ~1,100 pins.  7 I2C channels (14 pins).
 */
 
 XPlane XPlane_for_Location;
+// array of 12 pulses (8 motors + 4 servos) to send to Arduino
+char send_msg[] = "<50,100,200,300,400,500,600,700,800,900,950,999>";
 
 //Adafruit_BNO055 bno = Adafruit_BNO055(55);
 
@@ -53,6 +55,14 @@ void Location::init()
 
 
 		std::cout << "Starting IMU" << std::endl;
+
+		// buffer array that holds the PWMs to send to the Arduino over Serial
+		setup_port();
+		std::cout << "Finished setting up serial port...\n";
+		setGPIO(0);
+		std::cout << "GPIO pin set to logic LOW...\n";
+		turnon_GPIO();
+		std::cout << "GPIO pin is enabled...\n";
 
 /*
 	  //BNO055 reset - (Due pin 39 connected to BNO055 RST pin).  Need to do this after restarting after a bus loss or else have to try a couple times.
@@ -106,7 +116,112 @@ void Location::init()
 	}
 
 
+void Location::turnon_GPIO() {
+	gpio.open("/gpio/pin43/direction", std::ios::out | std::ios::trunc);
+	gpio << "out";
+	gpio.close();
+}
 
+void Location::setGPIO(int state) {
+	if(!gpio.is_open()) {
+		//cout << "Opening gpio pin...\n";
+		gpio.open("/gpio/pin43/value", std::ios::out | std::ios::trunc);
+	}	
+
+	gpio << state;
+	//std::cout << (state == 1 ? "GPIO pin set to logic HIGH...\n" :
+	//		"GPIO pin set to logic LOW...\n");
+	gpio.close();
+}
+
+void Location::readData() {
+	setGPIO(1); // set GPIO pin to logic high, telling Arduino that we want data
+	dataAvailable = true;
+	static bool recvInProgress = false;
+	static int indx = 0;
+	
+	// keep reading data until we read an end marker (indicates end of message)
+	while(dataAvailable) {
+		memset(&incomingByte, '\0', sizeof(incomingByte)); // clear the buffer holding the incoming byte
+		//std::cout << "Reading serial port...\n";
+		int n = read(serial_port, &incomingByte, sizeof(incomingByte)); // read a single byte
+		
+		//std::cout << "Read byte: " << incomingByte[0] << "\n";
+		
+		// error checks
+		if(n < 0) {
+			printf("Error reading from serial port: %s\n", strerror(errno));
+		}
+		else if(n == 0) {
+			std::cout << "Nothing received on serial port." << std::endl;
+		}
+		else {
+			//cout << "Reading data..." << incomingByte[0] << endl;
+			if (recvInProgress) {
+				// keep filling the messagebuffer until we reach the end marker
+	  			if (incomingByte[0] != endMarker) {
+					receivedMsg[indx] = incomingByte[0];
+					indx++;
+
+					if (indx >= numBytes)
+		  				indx = numBytes - 1;
+	  			}
+	  			else {
+					//cout << "Received message: " << receivedMsg << endl;
+					convertMessage();
+					//estimate();				
+					receivedMsg[0] = '\0'; // clear the message buffer
+	   			 	recvInProgress = false;
+					indx = 0;
+					dataAvailable = false;
+					setGPIO(0); // finished reading data, set GPIO pin to logic LOW
+	  			}
+			}
+			else if (incomingByte[0] == startMarker) {
+				//cout << "Received start marker...\n";
+	  			recvInProgress = true; // start to fill the message buffer if we received the start marker
+			}
+		}
+	}
+}
+
+
+// Converts char array received message to a vector of floats
+void Location::convertMessage() {
+	chars_array = strtok(receivedMsg, ",");
+	while(chars_array) {
+        convertedMsg.push_back(atof(chars_array));
+        chars_array = strtok(NULL, ",");
+    }
+}
+
+void Location::setup_port() {
+	serial_port = open(path.c_str(), O_RDWR | O_NOCTTY);
+
+	if(serial_port < 0) {
+		printf("Error %i from open: %s\n", errno, strerror(errno));			
+	}
+
+	// Read in existing settings, and handle any error
+	if(tcgetattr(serial_port, &tty) != 0) {
+		printf("Error %i from tcgetattr: %s\n", errno, strerror(errno));
+	}
+
+	tty.c_lflag |= ICANON; // run in canonical mode (receive data line by line)
+	tty.c_cflag &= ~CRTSCTS; // disable hardware flow control	
+
+	//tty.c_cc[VTIME] = 0; // no timeout
+	//tty.c_cc[VMIN] = 1; // always wait for 1 byte 
+
+	//tty.c_cflag |= CS8; // 8 bits per byte
+	cfsetispeed(&tty, B460800);
+	cfsetospeed(&tty, B460800);
+
+	// Save tty settings, also checking for error
+  	if (tcsetattr(serial_port, TCSANOW, &tty) != 0) {
+  		printf("Error %i from tcsetattr: %s\n", errno, strerror(errno));
+  	}
+}
 
 void Location::estimate()
 	{
@@ -116,7 +231,7 @@ void Location::estimate()
 ///*
 
 
-	XPlane_for_Location.get_data_from_XPlane();	
+	/*XPlane_for_Location.get_data_from_XPlane();	
 
 	Current_Location.pitch = XPlane_for_Location.Current_XPlane_data.pitch_rad;
 	Current_Location.roll = XPlane_for_Location.Current_XPlane_data.roll_rad;
@@ -125,19 +240,33 @@ void Location::estimate()
 	Current_Location.roll_rate = XPlane_for_Location.Current_XPlane_data.roll_rot_vel_calcd;
 	Current_Location.heading_rate = XPlane_for_Location.Current_XPlane_data.heading_rot_vel_calcd;
 	Current_Location.time = XPlane_for_Location.Current_XPlane_data.flight_time;
-
-
-
-
-	//For testing without IMU connected
-	/*
-	Current_Location.pitch = 0.1;
-	Current_Location.roll = -0.1;
-	Current_Location.yaw = -0.1;
-	Current_Location.pitch_rate = 0;
-	Current_Location.roll_rate = 0;
-	Current_Location.yaw_rate = 0;
 	*/
+
+
+
+	//For testing without IMU connected, reading dummy data from Arduino
+	readData();
+
+
+	Current_Location.pitch = convertedMsg[0];
+	Current_Location.roll = convertedMsg[1];
+	Current_Location.heading = convertedMsg[2];
+	Current_Location.pitch_rate = convertedMsg[3];
+	Current_Location.roll_rate = convertedMsg[4];
+	Current_Location.heading_rate = convertedMsg[5];
+
+	convertedMsg.clear(); // clear vector containing the data from Arduino
+
+	// Print for debugging
+	std::cout << "PRY: ";
+	std::cout << Current_Location.pitch << " ";
+	std::cout << Current_Location.roll << " ";
+	std::cout << Current_Location.heading << " ";
+	std::cout << Current_Location.pitch_rate << " ";
+	std::cout << Current_Location.roll_rate << " ";
+	std::cout << Current_Location.heading_rate << " " << std::endl;
+
+	
 
 
 	return;
