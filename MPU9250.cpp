@@ -45,7 +45,7 @@ Adapted from Sparkfun's MPU9250 library
 
 */
 
-static void MPU_Interrupt(); //Is this the best place for this?  Interrupt functions put in cpp for receiver
+//static void MPU_Interrupt(); //Is this the best place for this?  Interrupt functions put in cpp for receiver
 
 
 MPU9250::MPU9250()
@@ -659,7 +659,7 @@ void MPU9250::findInitialAccelGyroOffsets(float * accel_gyro_LSB_offsets)
 }
 
 
-
+/*
 void MPU9250::initMPU_Interrupt()
 {
 
@@ -669,7 +669,7 @@ void MPU9250::initMPU_Interrupt()
   	attachInterrupt(MPU_INT_PIN, &MPU_Interrupt, RISING); //Run MPU_Interrupt whenever Pin 41 goes low to high
 
 }
-
+*/
 
 
 
@@ -696,6 +696,7 @@ int sample_microseconds;
 uint8_t accel_temp_gyro[14];
 int sample_microseconds_end;
 
+/*
 void MPU_Interrupt() //ISR - Must take no parameters and return nothing
 	{ 
 
@@ -724,7 +725,7 @@ void MPU_Interrupt() //ISR - Must take no parameters and return nothing
    		sample_microseconds_end = micros();
 
 	}
-
+*/
 
 
 /*

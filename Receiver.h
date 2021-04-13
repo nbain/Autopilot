@@ -1,7 +1,16 @@
 #ifndef AUTOPILOT2_RECEIVER_H
 #define AUTOPILOT2_RECEIVER_H
 
-#include <Arduino.h>
+#include <iostream>
+#include <cstdio>
+
+#include "Location.h"
+
+
+
+//#include "main.h"
+
+//#include <Arduino.h>
 
 #define RECV_CHAN0PIN 	53 //Use this only for thrust (to avoid complexity)
 #define RECV_CHAN1PIN 	51 //Only for pitch
@@ -36,6 +45,15 @@
 #define MIN_PWM_DIAL1 988
 #define MAX_PWM_DIAL1 2012
 
+/*
+
+For input voltage = 6.2V, still 3.30V PWM output
+
+Pulses every 18ms -> 55.55 Hz (still 1,000 us - 2,000 us)
+
+
+*/
+
 
 //Pitch, roll, and yaw should be -1 to 1, others should be 0-1
 
@@ -56,9 +74,7 @@ class Receiver //used to be receiverModule
 
 		};
 
-		RECEIVER Receiver;
-
-
+		RECEIVER Current_Receiver_Values;
 
 
 		void init();
