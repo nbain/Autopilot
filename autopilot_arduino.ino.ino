@@ -1,7 +1,8 @@
+  
 #include <avr/dtostrf.h>
 
 #define GPIO 12
-#define CHECK_PIN 11
+#define CHECK_PIN 4
 #define RECV_CHAN0PIN 53
 #define RECV_CHAN1PIN 51
 #define RECV_CHAN2PIN 49
@@ -36,11 +37,13 @@
 
 int state;
 int previousState = 0;
-//char pulses[] = "1000.10, 1000.15, 1000.20, 1000.25, 1000.30, 1000.35, 1000.40, 1000.45, 1000.50, 1000.55, 1000.60, 1000.65, 1000.70";
+//char pulses[] = "0.1,0.2,0.3,0.4,0.5,0.6,0.7";
 char floatBuffer[10];
 char startMarker = '<';
 char endMarker = '>';
+char writeMarker = '&';
 char incomingByte;
+char previousByte = '0';
 const char numBytes = 60;
 char receivedMsg[numBytes];
 char expectedMsg[] = "100,200,300,400,500,600,700,800,100,200,300,400";
@@ -89,14 +92,17 @@ float *dataToSend[] = {&Current_Receiver_Values.thrust,
                        &Current_Receiver_Values.yaw,
                        &Current_Receiver_Values.aux1,
                        &Current_Receiver_Values.aux2,
-                       &Current_Receiver_Values.dial1,};
+                       &Current_Receiver_Values.dial1};
 
 void setup() {
   Serial.begin(460800);
+
   pinMode(LED_BUILTIN, OUTPUT);
   //clearGPIO();
   pinMode(GPIO, INPUT);
   pinMode(CHECK_PIN, OUTPUT);
+
+  digitalWrite(CHECK_PIN, HIGH);
 
   pinMode(RECV_CHAN0PIN, INPUT);
   pinMode(RECV_CHAN1PIN, INPUT);
@@ -114,11 +120,11 @@ void setup() {
   attachInterrupt(RECV_CHAN5PIN, &ch5_PWM, CHANGE);
   attachInterrupt(RECV_CHAN6PIN, &ch6_PWM, CHANGE);
 
-  Serial.println("CHANGE interrupts on receiver pins are set");
+  //Serial.println("CHANGE interrupts on receiver pins are set");
 }
 
 void loop() {
-  state = digitalRead(GPIO);
+  /*state = digitalRead(GPIO);
   digitalWrite(LED_BUILTIN, state);
 
   // Send data only if the GPIO pin is logic high AND the pin was previously logic LOW
@@ -133,10 +139,10 @@ void loop() {
   if (Serial.available() > 0 && state == 0)
     readData();
 
-  previousState = state;
+  previousState = state;*/
 
-  //updateReceiver(&Current_Receiver_Values);
-  //writeData();
+  updateReceiver(&Current_Receiver_Values);
+  writeData();
 }
 
 void updateReceiver(RECEIVER *rcvr) {
@@ -190,6 +196,10 @@ void writeData() {
   }
   //Serial.print(pulses);
   Serial.println(endMarker);
+
+  //while(Serial.available() != 0) {digitalWrite(LED_BUILTIN, LOW);}
+
+  //digitalWrite(LED_BUILTIN, HIGH);
 }
 
 void readData() {
@@ -197,8 +207,18 @@ void readData() {
   static boolean recvInProgress = false;
   static byte indx = 0;
 
-  while (Serial.available() > 0 && dataAvailable) {
+  //while (Serial.available() > 0 && dataAvailable) 
+  while (Serial.available() > 0) {
+    digitalWrite(LED_BUILTIN, HIGH);
     incomingByte = Serial.read();
+
+    if (incomingByte == writeMarker && previousByte == endMarker) {
+      //digitalWrite(LED_BUILTIN, HIGH);
+      updateReceiver(&Current_Receiver_Values);
+      writeData();
+      recvInProgress = false;
+      //digitalWrite(LED_BUILTIN, LOW);
+    }
 
     if (recvInProgress) {
       if (incomingByte != endMarker) {
@@ -209,7 +229,7 @@ void readData() {
           indx = numBytes - 1;
       }
       else {
-        checkMsg();
+        //checkMsg();
         receivedMsg[0] = '\0';
         recvInProgress = false;
         indx = 0;
@@ -219,16 +239,20 @@ void readData() {
     else if (incomingByte == startMarker) {
       recvInProgress = true;
     }
+
+    previousByte = incomingByte;
   }
+
+  digitalWrite(LED_BUILTIN, LOW);
 }
 
 // only use for debugging
 // writes digital HIGH to CHECK_PIN if the message received from the Neo matches the expected message
 void checkMsg() {
   if (strcmp(receivedMsg, expectedMsg) == 0)
-    digitalWrite(CHECK_PIN, HIGH);
+    digitalWrite(LED_BUILTIN, HIGH);
   else
-    digitalWrite(CHECK_PIN, LOW);
+    digitalWrite(LED_BUILTIN, LOW);
 }
 
 void ch0_PWM(){ 
