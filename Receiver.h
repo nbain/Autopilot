@@ -2,7 +2,19 @@
 #define AUTOPILOT2_RECEIVER_H
 
 #include <iostream>
+#include <fstream>
 #include <cstdio>
+#include <string.h>
+#include <vector>
+#include <chrono>
+
+#include <fcntl.h>
+#include <errno.h>
+#include <termios.h>
+#include <unistd.h>
+#include <stdlib.h>
+#include <stdint.h>
+
 
 #include "Location.h"
 
@@ -67,15 +79,17 @@ class Receiver //used to be receiverModule
 		void readData();
 		void setup_port();
 		void convertMessage();
+		void requestData();
 
-		std::string path = "/dev/ttyACM0";
+		std::string path = "/dev/ttyACM1";
 		int serial_port;
 		struct termios tty;
 		std::ofstream gpio;
 
-		static const int numBytes = 140;
+		static const int numBytes = 60;
 		char startMarker = '<';
 		char endMarker = '>';
+		char writeMarker[2] = "&";
 		char incomingByte[1];
 		char receivedMsg[numBytes];
 		char* chars_array;
