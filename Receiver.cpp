@@ -78,10 +78,10 @@ void Receiver::init()
 		std::cout << "Initializing receiver" << std::endl;
 		setup_port();
 		std::cout << "Finished setting up serial port...\n";
-		setGPIO(0);
-		std::cout << "GPIO pin set to logic LOW...\n";
-		turnon_GPIO();
-		std::cout << "GPIO pin is enabled to OUT...\n";
+		//setGPIO(0);
+		//std::cout << "GPIO pin set to logic LOW...\n";
+		//turnon_GPIO();
+		//std::cout << "GPIO pin is enabled to OUT...\n";
 		/*
 		pinMode(RECV_CHAN0PIN, INPUT);
   		pinMode(RECV_CHAN1PIN, INPUT);
@@ -122,8 +122,16 @@ void Receiver::setGPIO(int state) {
 	gpio.close();
 }
 
+void Receiver::requestData() {
+	int n = write(serial_port, &writeMarker, 2);
+	std::cout << "Number of bytes sent: " << n << ", ";
+	std::cout << "Sent byte: " << writeMarker << std::endl;
+}
+
 void Receiver::readData() {
-	setGPIO(1); // set GPIO pin to logic high, telling Arduino that we want data
+	//setGPIO(1); // set GPIO pin to logic high, telling Arduino that we want data
+	//requestData();
+
 	dataAvailable = true;
 	static bool recvInProgress = false;
 	static int indx = 0;
@@ -134,8 +142,6 @@ void Receiver::readData() {
 		//std::cout << "Reading serial port...\n";
 		int n = read(serial_port, &incomingByte, sizeof(incomingByte)); // read a single byte
 		
-		//std::cout << "Read byte: " << incomingByte[0] << "\n";
-		
 		// error checks
 		if(n < 0) {
 			printf("Error reading from serial port: %s\n", strerror(errno));
@@ -144,7 +150,8 @@ void Receiver::readData() {
 			std::cout << "Nothing received on serial port." << std::endl;
 		}
 		else {
-			//cout << "Reading data..." << incomingByte[0] << endl;
+			//std::cout << "Number of bytes read: " << n << ", ";
+			//std::cout << "Read byte: " << incomingByte[0] << "\n";
 			if (recvInProgress) {
 				// keep filling the messagebuffer until we reach the end marker
 	  			if (incomingByte[0] != endMarker) {
@@ -155,14 +162,13 @@ void Receiver::readData() {
 		  				indx = numBytes - 1;
 	  			}
 	  			else {
-					//cout << "Received message: " << receivedMsg << endl;
-					convertMessage();
-					//estimate();				
+					//std::cout << "Received message: " << receivedMsg << std::endl;
+					convertMessage();			
 					receivedMsg[0] = '\0'; // clear the message buffer
 	   			 	recvInProgress = false;
 					indx = 0;
 					dataAvailable = false;
-					setGPIO(0); // finished reading data, set GPIO pin to logic LOW
+					//setGPIO(0); // finished reading data, set GPIO pin to logic LOW
 	  			}
 			}
 			else if (incomingByte[0] == startMarker) {
@@ -196,12 +202,19 @@ void Receiver::setup_port() {
 	}
 
 	tty.c_lflag |= ICANON; // run in canonical mode (receive data line by line)
-	tty.c_cflag &= ~CRTSCTS; // disable hardware flow control	
+	tty.c_cflag &= ~CRTSCTS; // disable hardware flow control
+	//tty.c_lflag &= ~(ICANON | ECHO | ECHOE | ECHONL | ISIG | IEXTEN);
 
 	//tty.c_cc[VTIME] = 0; // no timeout
 	//tty.c_cc[VMIN] = 1; // always wait for 1 byte 
 
-	//tty.c_cflag |= CS8; // 8 bits per byte
+	/*tty.c_cflag |= (CS8 | CREAD | CLOCAL); // 8 bits per byte
+	tty.c_cflag &= ~PARENB;
+	tty.c_cflag &= ~CSTOPB;
+
+	tty.c_oflag &= ~(OPOST | ONLCR);
+	tty.c_iflag &= ~(IXON | IXOFF | IXANY);
+	tty.c_iflag &= ~(IGNBRK | BRKINT | PARMRK | ISTRIP | INLCR | IGNCR | ICRNL);*/
 	cfsetispeed(&tty, B460800);
 	cfsetospeed(&tty, B460800);
 
@@ -221,25 +234,25 @@ void Receiver::read_intent()
 
 		///*
 		//For testing without receiver connected
-	  	Current_Receiver_Values.thrust = convertedMsg[6];
-	  	Current_Receiver_Values.pitch = convertedMsg[7];
-	  	Current_Receiver_Values.roll = convertedMsg[8];
-	  	Current_Receiver_Values.yaw = convertedMsg[9];
-	  	Current_Receiver_Values.aux1 = convertedMsg[10];
-	  	Current_Receiver_Values.aux2 = convertedMsg[11];
-	  	Current_Receiver_Values.dial1 = convertedMsg[12];
+	  	Current_Receiver_Values.thrust = convertedMsg[0];
+	  	Current_Receiver_Values.pitch = convertedMsg[1];
+	  	Current_Receiver_Values.roll = convertedMsg[2];
+	  	Current_Receiver_Values.yaw = convertedMsg[3];
+	  	Current_Receiver_Values.aux1 = convertedMsg[4];
+	  	Current_Receiver_Values.aux2 = convertedMsg[5];
+	  	Current_Receiver_Values.dial1 = convertedMsg[6];
 
 	  	convertedMsg.clear(); // clear vector containing the data from Arduino
 
 	  	// Print for debugging
-		std::cout << "TPRYAAD: ";
+		/*std::cout << "TPRYAAD: ";
 		std::cout << Current_Receiver_Values.thrust << " ";
 		std::cout << Current_Receiver_Values.pitch << " ";
 		std::cout << Current_Receiver_Values.roll << " ";
 		std::cout << Current_Receiver_Values.yaw << " ";
 		std::cout << Current_Receiver_Values.aux1 << " ";
 		std::cout << Current_Receiver_Values.aux2 << " ";
-		std::cout << Current_Receiver_Values.dial1 << " " << std::endl;
+		std::cout << Current_Receiver_Values.dial1 << " " << std::endl;*/
 
 
 	  	return;
