@@ -75,7 +75,7 @@
  
  1. Added two lines in XPluginEnable that run when plugin starts that set frame rate
 		XPLMSetDatai(Override_framerate_Dref, 1); //Make framerate overridable.
-		XPLMSetDataf(Framerate_dref,0.02); //Set frame rate in seconds.
+		XPLMSetDataf(framerate_dref,0.02); //Set frame rate in seconds.
  
  2.  Added a number of lines that make it possible to access and set XPlane datarefs
 		e.g. XPLMDataRef paused_bool_dref = XPLMFindDataRef("sim/time/paused");
@@ -226,6 +226,12 @@ XPLMDataRef Rrad_dref = XPLMFindDataRef("sim/flightmodel/position/Rrad"); //floa
 //For magnetometer simulation
 XPLMDataRef mag_hdg_dref = XPLMFindDataRef("sim/flightmodel/position/mag_psi"); //float n degrees The real magnetic heading of the aircraft
 
+//For temperature simulation (-> dynamic pressure)
+XPLMDataRef ambient_temp_dref = XPLMFindDataRef("sim/weather/temperature_ambient_c"); //float n degreesC The air temperature outside the aircraft (at altitude).
+
+//For barometer simulation
+XPLMDataRef static_pressure_dref = XPLMFindDataRef("sim/weather/barometer_current_inhg"); //float n 29.92+-.... This is the barometric pressure at the point the current flight is at.
+
 
 
 //For engine force and moment override
@@ -273,7 +279,7 @@ XPLMDataRef G_mss_dref = XPLMFindDataRef("sim/physics/g_sealevel");
 
 
 XPLMDataRef Override_framerate_Dref = XPLMFindDataRef("sim/operation/override/override_timestep");
-XPLMDataRef Framerate_dref = XPLMFindDataRef("sim/operation/misc/frame_rate_period");
+XPLMDataRef framerate_dref = XPLMFindDataRef("sim/operation/misc/frame_rate_period");
 
 //Accel_body : m/s^2 in body frame
 XPLMDataRef G_norm_dref = XPLMFindDataRef("sim/flightmodel2/misc/gforce_normal");//IMU Z acceleration
@@ -297,36 +303,81 @@ XPLMDataRef Posz_dref = XPLMFindDataRef("sim/flightmodel/position/local_z");//Po
 
 float loop_time; //Loop time = physics model step time in seconds
 
+char IP_addr[20]; //Control system IP address for XPlane to send to
+bool IP_addr_recvd = false; //Check whether an IP address to send to has been received
+
+int sock_send;
+struct sockaddr_in myaddr_send;
 
 
-int UDP_Send(float array[16]){
+/*
+ Used separate function to initialize UDP socket to try to reduce latency by not creating a new socket with every transmission.
+ Likely not necessary - no easily measureable improvement (and for sure less than ~1 ms).
+ 
+ UDP latency purely affected by connection - over WiFi, seems to be ~1.5 ms each way, so adds 3 ms to loop time.
+ Sharing internet from MacBook to Udoo X86 with USB-to-Ethernet adapter, latency is almost instantaneous (probably ~100 us or less)
+ 
+ See comment in main function between UDP sending and receive on timing
+	(over Ethernet, total loop time ~= XPlane frame simulation time + Control system loop time)
+ 
+	-> Can speed up frame rate on XPlane:
+		-Reducing flight models per frame (real metric to be concerned about is flight models/sec, not flight models/frame
+			-Setting 0.01 frame period at 10 models frame -> 1000 Hz simulation
+				-Simulation, on MacBook, is CPU limited rather than GPU limited.  Reducing to 2 flight models/frame runs entire simulation (when over Ethernet) at 80-90 frames/sec vs 50 frames/sec at 10 flight models/frame
+						(tested with 0.02 sec frame period)
+ 
+ To share internet on MacBook:
+	-System Preferences -> Sharing -> Share Connection from: USB 10/100 LAN, to computers using: USB 10/100 LAN
+	-Check Internet Sharing box
+ 
+ */
+int UDP_Send_Setup(char IP_addr[20]){
 	
 	int option = 1;
-	struct sockaddr_in myaddr;
-	memset(&myaddr, 0, sizeof(myaddr));
-	myaddr.sin_family=AF_INET;
-	myaddr.sin_addr.s_addr=inet_addr("192.168.1.188"); //This should be the IP address of the computer running control code
-	myaddr.sin_port=htons(8888); //
+	int port = 8888;
+	//struct sockaddr_in myaddr;
+	memset(&myaddr_send, 0, sizeof(myaddr_send));
+	myaddr_send.sin_family=AF_INET;
+	myaddr_send.sin_addr.s_addr=inet_addr(IP_addr); //This should be the IP address of the computer running control code
+	myaddr_send.sin_port=htons(port); //
 	
 	
-	int sock;
-	sock=socket(AF_INET, SOCK_DGRAM, 0);
-	setsockopt(sock, SOL_SOCKET, SO_REUSEADDR, (char*)&option, sizeof(option));
-	bind(sock,( struct sockaddr *) &myaddr, sizeof(myaddr));
+	//int sock;
+	sock_send =socket(AF_INET, SOCK_DGRAM, 0);
+	setsockopt(sock_send, SOL_SOCKET, SO_REUSEADDR, (char*)&option, sizeof(option));
 	
+	//Set send and receive buffer sizes (in bytes).  Not clear if this reduces latency.
+	int option2 = 300;
+	setsockopt(sock_send, SOL_SOCKET, SO_SNDBUF, (char*)&option2, sizeof(option2));
 	
-	char tmp2[512]; //WAS 512 HERE
-	memset(tmp2, 0, 512); //LAST ARG WAS 512
+	int option3 = 300;
+	setsockopt(sock_send, SOL_SOCKET, SO_RCVBUF, (char*)&option3, sizeof(option3));
 	
-	sprintf(tmp2, "%f %f %f %f %f %f %f %f %f %f %f %f %f %f %f %f %f %f %f %f", array[0],array[1],array[2],array[3],array[4],array[5],array[6],array[7], \
-			array[8],array[9],array[10],array[11],array[12],array[13],array[14],array[15],array[16],array[17],array[18],array[19]);
+	bind(sock_send,( struct sockaddr *) &myaddr_send, sizeof(myaddr_send));
 	
-	sendto(sock, tmp2, sizeof(tmp2), 0,(struct sockaddr *)&myaddr, sizeof(myaddr));
+	XPC::Log::FormatLine(LOG_INFO, "EXEC", "Socket send IP address set to: %s", IP_addr);
+	XPC::Log::FormatLine(LOG_INFO, "EXEC", "Socket send port: %i", port);
 	
+	return 0;
 	
-	close(sock);
+}
+
+
+
+int UDP_Send(float array[21]){
+	
+
+	char tmp2[250]; //WAS 512 HERE
+	memset(tmp2, 0, 250); //LAST ARG WAS 512
+	
+	sprintf(tmp2, "%f %f %f %f %f %f %f %f %f %f %f %f %f %f %f %f %f %f %f %f %f", array[0],array[1],array[2],array[3],array[4],array[5],array[6],array[7], \
+			array[8],array[9],array[10],array[11],array[12],array[13],array[14],array[15],array[16],array[17],array[18],array[19],array[20]);
+	
+	sendto(sock_send, tmp2, sizeof(tmp2), 0,(struct sockaddr *)&myaddr_send, sizeof(myaddr_send));
+	
 	return 0;
 }
+
 
 
 
@@ -400,10 +451,10 @@ PLUGIN_API int XPluginEnable(void)
 	XPC::Log::FormatLine(LOG_INFO, "EXEC", "Debug Logging Enabled (Verbosity: %i)", LOG_LEVEL);
 
 	
-	loop_time = 0.01;
+	loop_time = 0.02;
 	
 	XPLMSetDatai(Override_framerate_Dref, 1); //Make framerate overridable.
-	XPLMSetDataf(Framerate_dref,loop_time); //Set frame rate in seconds.
+	XPLMSetDataf(framerate_dref,loop_time); //Set frame rate in seconds.
 	
 	float interval = -1; // Call every frame
 	void* refcon = NULL; // Don't pass anything to the callback directly
@@ -416,6 +467,10 @@ PLUGIN_API int XPluginEnable(void)
 	timer->start(chrono::milliseconds(1000), [=]{
 		XPC::MessageHandlers::SendBeacon(XPC_PLUGIN_VERSION, RECVPORT, xpVer);
 	});
+	
+	
+	
+	
 	
 
 	return 1;
@@ -467,7 +522,7 @@ float XPCFlightLoopCallback(float inElapsedSinceLastCall,
 	void* inRefcon)
 {
 	
-	XPC::Log::FormatLine(LOG_INFO, "EXEC", "STarting loop");
+	//XPC::Log::FormatLine(LOG_INFO, "EXEC", "Starting loop");
 	
 	//Get all data
 	
@@ -479,7 +534,6 @@ float XPCFlightLoopCallback(float inElapsedSinceLastCall,
 	float roll = XPLMGetDataf(roll_dref);
 	float pitch = XPLMGetDataf(pitch_dref);
 	float heading = XPLMGetDataf(hdg_dref);
-	
 	
 	//GPS
 	float latitude = XPLMGetDataf(lat_dref);
@@ -493,8 +547,8 @@ float XPCFlightLoopCallback(float inElapsedSinceLastCall,
 	float dist_agl = XPLMGetDataf(y_agl_dref);
 	
 	//Altimeter
-	float baro_alt = XPLMGetDataf(baro_alt_dref);
-	
+	//float baro_alt = XPLMGetDataf(baro_alt_dref);
+	float static_pressure = XPLMGetDataf(static_pressure_dref);
 	
 	//Accelerometer and OpenGL correction data
 	float OpenGL_acc_x = XPLMGetDataf(OpenGL_acc_x_dref);
@@ -512,8 +566,10 @@ float XPCFlightLoopCallback(float inElapsedSinceLastCall,
 	float yaw_rot_vel = XPLMGetDataf(Rrad_dref);//Yaw rotation rate in rad/s
 	
 	//Magnetometer
-	float mag_heading =XPLMGetDataf(mag_hdg_dref);
+	float mag_heading = XPLMGetDataf(mag_hdg_dref);
 
+	//Temperature
+	float ambient_temp = XPLMGetDataf(ambient_temp_dref);
 
 	
 	
@@ -531,17 +587,57 @@ float XPCFlightLoopCallback(float inElapsedSinceLastCall,
 	}
 	
 	
+
+	//Block here until received an IP address to send back to.  After receiving, always skip this.
+	if (!IP_addr_recvd){
+	
+		XPC::Message IPaddr_msg = XPC::Message::ReadFrom(*sock);
+		
+		XPC::Log::FormatLine(LOG_INFO, "EXEC", "Waiting for IP address", IP_addr);
+		
+		for(;;){
+			IPaddr_msg = XPC::Message::ReadFrom(*sock);
+			
+			if (IPaddr_msg.GetSize() > 0){
+				break;
+			}
+			usleep(1000);
+		}
+		
+		const unsigned char* IPaddr_msg_const_char = IPaddr_msg.GetBuffer();
+		
+		char * IPaddr_msg_char_star = (char *)(IPaddr_msg_const_char);
+
+		strcpy(IP_addr, IPaddr_msg_char_star);
+		
+		UDP_Send_Setup(IP_addr);
+		
+		XPC::Log::FormatLine(LOG_INFO, "EXEC", "Received IP.  Setting IP address to: %s", IP_addr);
+		
+		
+		
+		IP_addr_recvd = true;
+		
+	}
+
+
+
+
+	
+	
 	//Send relevant data over UDP
 	
 	flight_time = flight_time - loop_time; //See comment at top of function for reasoning here
 
 	//Send flight/sensor data into autopilot over UDP
 	//Makes a new connection every time (might be better for reliability, no errors in buffer) - but may be slower
-	float flightstateArray[20] ={flight_time, roll, pitch, heading, latitude, longitude, elevation,
-		airspeed, dist_agl, baro_alt, OpenGL_acc_x, OpenGL_acc_y, OpenGL_acc_z, OpenGL_roll, OpenGL_pitch, OpenGL_hdg,
-		roll_rot_vel, pitch_rot_vel, yaw_rot_vel, mag_heading
+	float flightstateArray[21] ={flight_time, roll, pitch, heading, latitude, longitude, elevation,
+		airspeed, dist_agl, static_pressure, OpenGL_acc_x, OpenGL_acc_y, OpenGL_acc_z, OpenGL_roll, OpenGL_pitch, OpenGL_hdg,
+		roll_rot_vel, pitch_rot_vel, yaw_rot_vel, mag_heading, ambient_temp
 	};
 	
+	
+	XPC::Log::FormatLine(LOG_INFO, "EXEC", "Simulation flight time: %f", flight_time);
 	
 	UDP_Send(flightstateArray);
 	//XPC::Log::FormatLine(LOG_INFO, "EXEC", "UDP sent to control system");
@@ -554,14 +650,16 @@ float XPCFlightLoopCallback(float inElapsedSinceLastCall,
 	//Listen indefinitely for a throttle and servo angle response
 	//If no response after a certain number of tries, send the XPlane data over UDP again
 	
-	//This is where the holdup happens that causes 80 -> 40 frames/sec - entire rest of plugin runs extremely fast
-	//Typically takes 9-12 tries, waiting 1000 us between each try before receiving something back over UDP
+
+	//Time waited here, when connected to Ethernet, is essentially the time taken to complete the control loop (or within ~1 ms, verified by experiment).  Add ~3ms for UDP packets sent over local WiFi.
 	int count = 0;
 	
 	for(;;){
 
+		XPC::Log::FormatLine(LOG_INFO, "EXEC", "Count: %i", count);
 		
-		if (msg.GetSize() > 0){
+		//Check if > 20 because don't want to confuse IP message (20 bytes) with control message
+		if (msg.GetSize() > 20){
 			break;
 		}
 		
@@ -575,16 +673,13 @@ float XPCFlightLoopCallback(float inElapsedSinceLastCall,
 		if (count > 2000){
 			UDP_Send(flightstateArray);
 			
-			XPC::Log::FormatLine(LOG_INFO, "EXEC", "UDP Sent again");
+			XPC::Log::FormatLine(LOG_INFO, "EXEC", "UDP sent again to: %s", IP_addr);
 			count = 0;
 		}
 		
 		count = count + 1;
 		
-		//XPC::Log::FormatLine(LOG_INFO, "EXEC", "Count: %i", count);
-		
 	}
-	
 	
 
 	const unsigned char* input_array = msg.GetBuffer();
@@ -643,7 +738,7 @@ float XPCFlightLoopCallback(float inElapsedSinceLastCall,
 	XPLMSetDataf(propulsion_roll_moment_dref,propulsion_roll_moment);
 	XPLMSetDataf(propulsion_pitch_moment_dref,propulsion_pitch_moment);
 	XPLMSetDataf(propulsion_yaw_moment_dref,propulsion_yaw_moment);
-	XPLMSetDataf(Framerate_dref,loop_time); //Set frame rate in seconds.
+	XPLMSetDataf(framerate_dref,loop_time); //Set frame rate in seconds.
 	
 	
 	XPC::Log::FormatLine(LOG_INFO, "EXEC", "Backward force set: %f", propulsion_backward_force);
