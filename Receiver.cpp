@@ -6,12 +6,9 @@ for thrust, pitch, etc.
 
 There's so much repetition here because the Interrupt Service Routine (ISR) is needed to detect a change
 in a pin value corresponding to the start or end of a pwm pulse - an interrupt is needed so it only takes
-this action when a pin actually changes from high-low/low-high
-
 Reference: https://www.arduino.cc/reference/en/language/functions/external-interrupts/attachinterrupt/
-
 ISRs cannot have any parameters passed into them and return nothing (though obv can save value to variable)
-So, a separate ISR must be used for each receiver channel
+ be used for each receiver channel
 
 When a pin goes low, the function subtracts the most recent start time for that pin
 from the time now, when it just went low.
@@ -58,19 +55,11 @@ int ch5_end;
 int ch5_us;
 
 int ch6_start;
-int ch6_end;
-int ch6_us;
-
-
-static void ch0_PWM();
-static void ch1_PWM();
-static void ch2_PWM();
-static void ch3_PWM();
+stccc void ch3_PWM();
 static void ch4_PWM();
 static void ch5_PWM();
 static void ch6_PWM();
 */
-
 
 void Receiver::init()
 	{
@@ -107,9 +96,12 @@ void Receiver::readData() {
 	// using a boolean 
 	dataAvailable = true;
 
+	int count=0;
+
 	while(dataAvailable) {
 		memset(&incomingByte, '\0', sizeof(incomingByte)); // clear the buffer holding the incoming byte
 		int n = read(serial_port_read, &incomingByte, sizeof(incomingByte)); // read a single byte
+		count=count+1;
 		
 		// error checks, we should log these to the SD card eventually
 		if(n < 0) {
@@ -121,6 +113,7 @@ void Receiver::readData() {
 		else {			
 			if (incomingByte[0] == startMarker) {
 				int n2 = read(serial_port_read, &receiver_msg, sizeof(receiver_msg));
+				std::cout << count << " calls to read()\t";
 				
 				// Convert the character array to a float array
 				convertMessage();
@@ -162,31 +155,49 @@ void Receiver::setup_port() {
 	}
 
 	// Read in existing settings, and handle any error
-	if(tcgetattr(serial_port_read, &tty) != 0) {
+	if(tcgetattr(serial_port_read, &options) != 0) {
 		printf("Error %i from tcgetattr: %s\n", errno, strerror(errno));
 	}
 
-	tty.c_lflag |= ICANON; // run in canonical mode (receive data line by line)
-	tty.c_cflag &= ~CRTSCTS; // disable hardware flow control
-	//tty.c_lflag &= ~(ICANON | ECHO | ECHOE | ECHONL | ISIG | IEXTEN);
+	/*options.c_cflag &= ~PARENB; // Clear parity bit, disabling parity (most common)
+	options.c_cflag &= ~CSTOPB; // Clear stop field, only one stop bit used in communication (most common)
+	options.c_cflag &= ~CSIZE; // Clear all bits that set the data size 
+	options.c_cflag |= CS8; // 8 bits per byte (most common)
+	options.c_cflag &= ~CRTSCTS; // Disable RTS/CTS hardware flow control (most common)
+	options.c_cflag |= CREAD | CLOCAL; // Turn on READ & ignore ctrl lines (CLOCAL = 1)
 
-	//tty.c_cc[VTIME] = 0; // no timeout
-	//tty.c_cc[VMIN] = 1; // always wait for 1 byte 
+	options.c_lflag &= ~ICANON; // Disable canonical mode
+	options.c_lflag &= ~IEXTEN; // Disable extended functions
+	options.c_lflag &= ~ECHO; // Disable echo
+	options.c_lflag &= ~ECHOE; // Disable erasure
+	options.c_lflag &= ~ECHONL; // Disable new-line echo
+	options.c_lflag &= ~ISIG; // Disable interpretation of INTR, QUIT and SUSP
+	options.c_iflag &= ~(IXON | IXOFF | IXANY); // Turn off s/w flow ctrl
+	options.c_iflag &= ~(IGNBRK|BRKINT|PARMRK|ISTRIP|INLCR|IGNCR|ICRNL|INPCK); // Disable any special handling of received bytes
 
-	/*tty.c_cflag |= (CS8 | CREAD | CLOCAL); // 8 bits per byte
-	tty.c_cflag &= ~PARENB;
-	tty.c_cflag &= ~CSTOPB;
+	options.c_oflag &= ~OPOST; // Prevent special interpretation of output bytes (e.g. newline chars)
+	options.c_oflag &= ~ONLCR; // Prevent conversion of newline to carriage return/line feed
 
-	tty.c_oflag &= ~(OPOST | ONLCR);
-	tty.c_iflag &= ~(IXON | IXOFF | IXANY);
-	tty.c_iflag &= ~(IGNBRK | BRKINT | PARMRK | ISTRIP | INLCR | IGNCR | ICRNL);*/
-	cfsetispeed(&tty, B460800);
-	cfsetospeed(&tty, B460800);
+	struct serial_struct serial;
+	ioctl(serial_port_read, TIOCGSERIAL, &serial);
+	serial.flags |= ASYNC_LOW_LATENCY;
+	ioctl(serial_port_read, TIOCGSERIAL, &serial);
+	
+	options.c_cc[VTIME] = 0; // no timeout
+	options.c_cc[VMIN] = numBytes; // always wait for expected number of bytes*/
+	
+	options.c_lflag |= ICANON;
+	options.c_cflag &= ~CRTSCTS;
 
-	// Save tty settings, also checking for error
-  	if (tcsetattr(serial_port_read, TCSANOW, &tty) != 0) {
+	cfsetispeed(&options, B460800);
+	cfsetospeed(&options, B460800);
+
+	// Save options settings, also checking for error
+  	if (tcsetattr(serial_port_read, TCSANOW, &options) != 0) {
   		printf("Error %i from tcsetattr: %s\n", errno, strerror(errno));
   	}
+
+	//tcflush(serial_port_read, TCIOFLUSH); // Flush to put settings to work
 }
 
 
@@ -204,6 +215,15 @@ void Receiver::read_intent()
 		Current_Receiver_Values.dial1 = clip(recv_values[4], -1, 1);
 		Current_Receiver_Values.aux1 = clip(recv_values[5], 0, 1);
 		Current_Receiver_Values.aux2 = clip(recv_values[6], 0, 1);
+
+		std::cout << "\tTPRYDAA: ";
+		printf("%5.2f", Current_Receiver_Values.thrust);
+		printf("%5.2f", Current_Receiver_Values.pitch);
+		printf("%5.2f", Current_Receiver_Values.roll);
+		printf("%5.2f", Current_Receiver_Values.yaw);
+		printf("%5.2f", Current_Receiver_Values.dial1);
+		printf("%5.2f", Current_Receiver_Values.aux1);
+		printf("%5.2f", Current_Receiver_Values.aux2);
 
 	  	//recv_floats_array.clear(); // clear vector containing the data from Arduino
 

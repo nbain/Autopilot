@@ -33,7 +33,9 @@ Eigen folder in eigen-3.3.9 folder copied to usr/local/include using sudo cp -r
 #include <arpa/inet.h>
 #include <netdb.h>
 
-
+#include <chrono>
+#include <iostream>
+#include <fstream>
 
 
 
@@ -68,7 +70,7 @@ https://stackoverflow.com/questions/13263277/difference-between-stdsystem-clock-
 
 
 
-
+using namespace std::chrono;
 
 int main()
 {
@@ -79,21 +81,30 @@ int main()
 
 
 	_Control.set_motor_and_servo_parameters();
+	//std::ofstream LOG;
+	//LOG.open("testlog.txt", std::ios::out);
 
+	_Location.init();
+	_Receiver.init();
 
 	std::cout << "Starting loop" << std::endl;
 
 
 	while(true)
 	{
+		usleep(4000);
+		auto start = steady_clock::now();
 
+        _Location.estimate(); // takes 4000-8000us
 
+		_Receiver.read_intent(); // takes 2000-4000us, 1500-2500us with low-latency enabled
 
-        _Location.estimate();
+		//_Control.run(&_Location.Current_Location, &_Receiver.Current_Receiver_Values);
 
-		_Receiver.read_intent();
-
-		_Control.run(&_Location.Current_Location, &_Receiver.Current_Receiver_Values);
+		
+		auto end = steady_clock::now();
+		auto duration = duration_cast<microseconds>(end-start).count();
+		std::cout << "\tLoop time (us): " << duration << std::endl;
 		//_Control.run();
 
 		//_XPlane.send_output_to_XPlane();

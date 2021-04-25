@@ -113,10 +113,12 @@ void Location::init()
 void Location::readData() {
 	// using a boolean 
 	dataAvailable = true;
+	int count=0;
 
 	while(dataAvailable) {
 		memset(&incomingByte, '\0', sizeof(incomingByte)); // clear the buffer holding the incoming byte
 		int n = read(serial_port_read, &incomingByte, sizeof(incomingByte)); // read a single byte
+		count=count+1;
 		
 		// error checks, we should log these to the SD card eventually
 		if(n < 0) {
@@ -126,8 +128,9 @@ void Location::readData() {
 			std::cout << "Nothing received on serial port." << std::endl;
 		}
 		else {			
-			if (incomingByte[0] == startMarker) {
+			if (incomingByte[0] == loc_startMarker) {
 				int n2 = read(serial_port_read, &location_msg, sizeof(location_msg));
+				std::cout << count << " calls to read()\t";
 				
 				// Convert the character array to a float array
 				convertMessage();
@@ -136,7 +139,7 @@ void Location::readData() {
 				dataAvailable = false; // stop reading from the serial port
 
 				// Need to flush the buffer to prevent build up of delayed data (by 1-2 sec)
-	  			tcflush(serial_port_read,TCIOFLUSH);
+	  			//tcflush(serial_port_read,TCIOFLUSH);
 			}
 		}
 	}
@@ -165,31 +168,61 @@ void Location::setup_port() {
 	}
 
 	// Read in existing settings, and handle any error
-	if(tcgetattr(serial_port_read, &tty) != 0) {
+	if(tcgetattr(serial_port_read, &options) != 0) {
 		printf("Error %i from tcgetattr: %s\n", errno, strerror(errno));
 	}
 
-	tty.c_lflag |= ICANON; // run in canonical mode (receive data line by line)
-	tty.c_cflag &= ~CRTSCTS; // disable hardware flow control
-	//tty.c_lflag &= ~(ICANON | ECHO | ECHOE | ECHONL | ISIG | IEXTEN);
+	/*options.c_cflag &= ~PARENB; // Clear parity bit, disabling parity (most common)
+	options.c_cflag &= ~CSTOPB; // Clear stop field, only one stop bit used in communication (most common)
+	options.c_cflag &= ~CSIZE; // Clear all bits that set the data size 
+	options.c_cflag |= CS8; // 8 bits per byte (most common)
+	options.c_cflag &= ~CRTSCTS; // Disable RTS/CTS hardware flow control (most common)
+	options.c_cflag |= CREAD | CLOCAL; // Turn on READ & ignore ctrl lines (CLOCAL = 1)
 
-	//tty.c_cc[VTIME] = 0; // no timeout
-	//tty.c_cc[VMIN] = 1; // always wait for 1 byte 
+	options.c_lflag &= ~ICANON; // Disable canonical mode
+	options.c_lflag &= ~IEXTEN; // Disable extended functions
+	options.c_lflag &= ~ECHO; // Disable echo
+	options.c_lflag &= ~ECHOE; // Disable erasure
+	options.c_lflag &= ~ECHONL; // Disable new-line echo
+	options.c_lflag &= ~ISIG; // Disable interpretation of INTR, QUIT and SUSP
+	options.c_iflag &= ~(IXON | IXOFF | IXANY); // Turn off s/w flow ctrl
+	options.c_iflag &= ~(IGNBRK|BRKINT|PARMRK|ISTRIP|INLCR|IGNCR|ICRNL|INPCK); // Disable any special handling of received bytes
 
-	/*tty.c_cflag |= (CS8 | CREAD | CLOCAL); // 8 bits per byte
-	tty.c_cflag &= ~PARENB;
-	tty.c_cflag &= ~CSTOPB;
+	options.c_oflag &= ~OPOST; // Prevent special interpretation of output bytes (e.g. newline chars)
+	options.c_oflag &= ~ONLCR; // Prevent conversion of newline to carriage return/line feed
 
-	tty.c_oflag &= ~(OPOST | ONLCR);
-	tty.c_iflag &= ~(IXON | IXOFF | IXANY);
-	tty.c_iflag &= ~(IGNBRK | BRKINT | PARMRK | ISTRIP | INLCR | IGNCR | ICRNL);*/
-	cfsetispeed(&tty, B460800);
-	cfsetospeed(&tty, B460800);
+	//.c_lflag |= ICANON; // run in canonical mode (receive data line by line)
+	//options.c_cflag &= ~CRTSCTS; // disable hardware flow control
 
-	// Save tty settings, also checking for error
-  	if (tcsetattr(serial_port_read, TCSANOW, &tty) != 0) {
+	struct serial_struct serial;
+	ioctl(serial_port_read, TIOCGSERIAL, &serial);
+	serial.flags |= ASYNC_LOW_LATENCY;
+	ioctl(serial_port_read, TIOCGSERIAL, &serial);
+	
+	//options.c_lflag &= ~(ICANON | ECHO | ECHOE | ECHONL | ISIG | IEXTEN);
+
+	options.c_cc[VTIME] = 0; // no timeout
+	options.c_cc[VMIN] = numBytes; // always wait for expected number of bytes*/
+
+	options.c_lflag |= ICANON;
+	options.c_cflag &= ~CRTSCTS;
+
+	/*options.c_cflag |= (CS8 | CREAD | CLOCAL); // 8 bits per byte
+	options.c_cflag &= ~PARENB;
+	options.c_cflag &= ~CSTOPB;
+
+	options.c_oflag &= ~(OPOST | ONLCR);
+	options.c_iflag &= ~(IXON | IXOFF | IXANY);
+	options.c_iflag &= ~(IGNBRK | BRKINT | PARMRK | ISTRIP | INLCR | IGNCR | ICRNL);*/
+	cfsetispeed(&options, B460800);
+	cfsetospeed(&options, B460800);
+
+	// Save options settings, also checking for error
+  	if (tcsetattr(serial_port_read, TCSANOW, &options) != 0) {
   		printf("Error %i from tcsetattr: %s\n", errno, strerror(errno));
   	}
+
+	//tcflush(serial_port_read, TCIOFLUSH);
 }
 
 
@@ -214,12 +247,20 @@ void Location::estimate()
 	*/
 
 	readData(); // Get location data over Serial from Arduino
-	Current_Location.pitch = location_vals[0];
-	Current_Location.roll = location_vals[1];
+	Current_Location.roll = location_vals[0];
+	Current_Location.pitch = location_vals[1];
 	Current_Location.heading = location_vals[2];
-	Current_Location.pitch_rate = location_vals[3];
-	Current_Location.roll_rate = location_vals[4];
+	Current_Location.roll_rate = location_vals[3];
+	Current_Location.pitch_rate = location_vals[4];
 	Current_Location.heading_rate = location_vals[5];
+
+	std::cout << "RPY: ";
+	printf("%8.3f", Current_Location.roll);
+	printf("%8.3f", Current_Location.pitch);
+	printf("%8.3f", Current_Location.heading);
+	printf("%8.3f", Current_Location.roll_rate);
+	printf("%8.3f", Current_Location.pitch_rate);
+	printf("%8.3f\t", Current_Location.heading_rate);
 
 
 	//For testing without IMU connected

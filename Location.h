@@ -6,6 +6,9 @@
 #include <cstdio>
 #include <string.h>
 
+#include <sys/ioctl.h>
+#include <linux/serial.h>
+
 #include <fcntl.h>
 #include <errno.h>
 #include <termios.h>
@@ -52,11 +55,11 @@ class Location
 
 		std::string readPath = "/dev/ttyACM0"; // reading IMU and Receiver data from the programming port of the Arduino
 		int serial_port_read;
-		struct termios tty;
+		struct termios options;
 
 		// Location data consists of 6 flaots, each 8 bytes long (+/- 000.000) and separated by a comma
 		static const int numBytes = 54;
-		char startMarker = '&';
+		char loc_startMarker = '&';
 		//char endMarker = '>';
 		bool dataAvailable;
 		char incomingByte[1];

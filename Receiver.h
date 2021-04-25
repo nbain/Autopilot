@@ -8,6 +8,9 @@
 //#include <vector>
 #include <chrono>
 
+#include <sys/ioctl.h>
+#include <linux/serial.h>
+
 #include <fcntl.h>
 #include <errno.h>
 #include <termios.h>
@@ -80,7 +83,7 @@ class Receiver //used to be receiverModule
 
 		std::string readPath = "/dev/ttyACM0"; // reading IMU and Receiver data from the programming port of the Arduino
 		int serial_port_read;
-		struct termios tty;
+		struct termios options;
 
 		// Receiver data conists of 7 floats, each 5 bytes long (+/- 0.00) and separated by a comma
 		static const int numBytes = 42;
