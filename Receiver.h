@@ -5,7 +5,7 @@
 #include <fstream>
 #include <cstdio>
 #include <string.h>
-#include <vector>
+//#include <vector>
 #include <chrono>
 
 #include <fcntl.h>
@@ -74,27 +74,24 @@ class Receiver //used to be receiverModule
 	
 	public:
 
-		void setGPIO(int state);
-		void turnon_GPIO();
 		void readData();
 		void setup_port();
 		void convertMessage();
-		void requestData();
 
-		std::string path = "/dev/ttyACM1";
-		int serial_port;
+		std::string readPath = "/dev/ttyACM0"; // reading IMU and Receiver data from the programming port of the Arduino
+		int serial_port_read;
 		struct termios tty;
-		std::ofstream gpio;
 
-		static const int numBytes = 60;
+		// Receiver data conists of 7 floats, each 5 bytes long (+/- 0.00) and separated by a comma
+		static const int numBytes = 42;
 		char startMarker = '<';
-		char endMarker = '>';
-		char writeMarker[2] = "&";
-		char incomingByte[1];
-		char receivedMsg[numBytes];
-		char* chars_array;
-		std::vector<float> convertedMsg;
+		//char endMarker = '>';
 		bool dataAvailable;
+		char incomingByte[1];
+		char receiver_msg[numBytes];
+		char* receiver_msg_ptr;
+		float recv_values[7];
+		//std::vector<float> recv_floats_array;
 
 		struct RECEIVER
 		{
@@ -114,7 +111,7 @@ class Receiver //used to be receiverModule
 		void init();
 		void read_intent();
 		void Log();
-
+		float clip(float input, float lower_bound, float upper_bound);
 
 };
 

@@ -53,6 +53,8 @@ void Location::init()
 
 
 		std::cout << "Starting IMU" << std::endl;
+		setup_port();
+		std::cout << "Finished setting up serial port...\n";
 
 /*
 	  //BNO055 reset - (Due pin 39 connected to BNO055 RST pin).  Need to do this after restarting after a bus loss or else have to try a couple times.
@@ -106,6 +108,90 @@ void Location::init()
 	}
 
 
+// NOTE: can speed up Serial read by reading twice the message length and parsing for the start marker
+// rather than reading for the start marker one byte at a time
+void Location::readData() {
+	// using a boolean 
+	dataAvailable = true;
+
+	while(dataAvailable) {
+		memset(&incomingByte, '\0', sizeof(incomingByte)); // clear the buffer holding the incoming byte
+		int n = read(serial_port_read, &incomingByte, sizeof(incomingByte)); // read a single byte
+		
+		// error checks, we should log these to the SD card eventually
+		if(n < 0) {
+			printf("Error reading from serial port: %s\n", strerror(errno));
+		}
+		else if(n == 0) {
+			std::cout << "Nothing received on serial port." << std::endl;
+		}
+		else {			
+			if (incomingByte[0] == startMarker) {
+				int n2 = read(serial_port_read, &location_msg, sizeof(location_msg));
+				
+				// Convert the character array to a float array
+				convertMessage();
+
+				location_msg[0] = '\0'; // clear the buffer for the next read() call
+				dataAvailable = false; // stop reading from the serial port
+
+				// Need to flush the buffer to prevent build up of delayed data (by 1-2 sec)
+	  			tcflush(serial_port_read,TCIOFLUSH);
+			}
+		}
+	}
+}
+
+// Converts char array location message to a float array
+void Location::convertMessage() {
+	location_msg_ptr = strtok(location_msg, ",");
+
+	int count = 0;
+	while(location_msg_ptr) {
+		std::string tmp1 = location_msg_ptr;
+
+		location_vals[count] = (float)atof(tmp1.c_str());
+		count = count + 1;
+
+		location_msg_ptr = strtok(NULL, ",");
+	}
+}
+
+void Location::setup_port() {
+	serial_port_read = open(readPath.c_str(), O_RDWR | O_NOCTTY);
+
+	if(serial_port_read < 0) {
+		printf("Error %i from open: %s\n", errno, strerror(errno));			
+	}
+
+	// Read in existing settings, and handle any error
+	if(tcgetattr(serial_port_read, &tty) != 0) {
+		printf("Error %i from tcgetattr: %s\n", errno, strerror(errno));
+	}
+
+	tty.c_lflag |= ICANON; // run in canonical mode (receive data line by line)
+	tty.c_cflag &= ~CRTSCTS; // disable hardware flow control
+	//tty.c_lflag &= ~(ICANON | ECHO | ECHOE | ECHONL | ISIG | IEXTEN);
+
+	//tty.c_cc[VTIME] = 0; // no timeout
+	//tty.c_cc[VMIN] = 1; // always wait for 1 byte 
+
+	/*tty.c_cflag |= (CS8 | CREAD | CLOCAL); // 8 bits per byte
+	tty.c_cflag &= ~PARENB;
+	tty.c_cflag &= ~CSTOPB;
+
+	tty.c_oflag &= ~(OPOST | ONLCR);
+	tty.c_iflag &= ~(IXON | IXOFF | IXANY);
+	tty.c_iflag &= ~(IGNBRK | BRKINT | PARMRK | ISTRIP | INLCR | IGNCR | ICRNL);*/
+	cfsetispeed(&tty, B460800);
+	cfsetospeed(&tty, B460800);
+
+	// Save tty settings, also checking for error
+  	if (tcsetattr(serial_port_read, TCSANOW, &tty) != 0) {
+  		printf("Error %i from tcsetattr: %s\n", errno, strerror(errno));
+  	}
+}
+
 
 
 void Location::estimate()
@@ -115,7 +201,7 @@ void Location::estimate()
 
 ///*
 
-
+	/*
 	XPlane_for_Location.get_data_from_XPlane();	
 
 	Current_Location.pitch = XPlane_for_Location.Current_XPlane_data.pitch_rad;
@@ -125,8 +211,15 @@ void Location::estimate()
 	Current_Location.roll_rate = XPlane_for_Location.Current_XPlane_data.roll_rot_vel_calcd;
 	Current_Location.heading_rate = XPlane_for_Location.Current_XPlane_data.heading_rot_vel_calcd;
 	Current_Location.time = XPlane_for_Location.Current_XPlane_data.flight_time;
+	*/
 
-
+	readData(); // Get location data over Serial from Arduino
+	Current_Location.pitch = location_vals[0];
+	Current_Location.roll = location_vals[1];
+	Current_Location.heading = location_vals[2];
+	Current_Location.pitch_rate = location_vals[3];
+	Current_Location.roll_rate = location_vals[4];
+	Current_Location.heading_rate = location_vals[5];
 
 
 	//For testing without IMU connected

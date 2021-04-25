@@ -78,10 +78,7 @@ void Receiver::init()
 		std::cout << "Initializing receiver" << std::endl;
 		setup_port();
 		std::cout << "Finished setting up serial port...\n";
-		//setGPIO(0);
-		//std::cout << "GPIO pin set to logic LOW...\n";
-		//turnon_GPIO();
-		//std::cout << "GPIO pin is enabled to OUT...\n";
+
 		/*
 		pinMode(RECV_CHAN0PIN, INPUT);
   		pinMode(RECV_CHAN1PIN, INPUT);
@@ -104,100 +101,68 @@ void Receiver::init()
 
 	}
 
-void Receiver::turnon_GPIO() {
-	gpio.open("/gpio/pin43/direction", std::ios::out | std::ios::trunc);
-	gpio << "out";
-	gpio.close();
-}
-
-void Receiver::setGPIO(int state) {
-	if(!gpio.is_open()) {
-		//cout << "Opening gpio pin...\n";
-		gpio.open("/gpio/pin43/value", std::ios::out | std::ios::trunc);
-	}	
-
-	gpio << state;
-	//std::cout << (state == 1 ? "GPIO pin set to logic HIGH...\n" :
-	//		"GPIO pin set to logic LOW...\n");
-	gpio.close();
-}
-
-void Receiver::requestData() {
-	int n = write(serial_port, &writeMarker, 2);
-	std::cout << "Number of bytes sent: " << n << ", ";
-	std::cout << "Sent byte: " << writeMarker << std::endl;
-}
-
+// NOTE: can speed up Serial read by reading twice the message length and parsing for the start marker
+// rather than reading for the start marker one byte at a time
 void Receiver::readData() {
-	//setGPIO(1); // set GPIO pin to logic high, telling Arduino that we want data
-	//requestData();
-
+	// using a boolean 
 	dataAvailable = true;
-	static bool recvInProgress = false;
-	static int indx = 0;
-	
-	// keep reading data until we read an end marker (indicates end of message)
+
 	while(dataAvailable) {
 		memset(&incomingByte, '\0', sizeof(incomingByte)); // clear the buffer holding the incoming byte
-		//std::cout << "Reading serial port...\n";
-		int n = read(serial_port, &incomingByte, sizeof(incomingByte)); // read a single byte
+		int n = read(serial_port_read, &incomingByte, sizeof(incomingByte)); // read a single byte
 		
-		// error checks
+		// error checks, we should log these to the SD card eventually
 		if(n < 0) {
 			printf("Error reading from serial port: %s\n", strerror(errno));
 		}
 		else if(n == 0) {
 			std::cout << "Nothing received on serial port." << std::endl;
 		}
-		else {
-			//std::cout << "Number of bytes read: " << n << ", ";
-			//std::cout << "Read byte: " << incomingByte[0] << "\n";
-			if (recvInProgress) {
-				// keep filling the messagebuffer until we reach the end marker
-	  			if (incomingByte[0] != endMarker) {
-					receivedMsg[indx] = incomingByte[0];
-					indx++;
+		else {			
+			if (incomingByte[0] == startMarker) {
+				int n2 = read(serial_port_read, &receiver_msg, sizeof(receiver_msg));
+				
+				// Convert the character array to a float array
+				convertMessage();
 
-					if (indx >= numBytes)
-		  				indx = numBytes - 1;
-	  			}
-	  			else {
-					//std::cout << "Received message: " << receivedMsg << std::endl;
-					convertMessage();			
-					receivedMsg[0] = '\0'; // clear the message buffer
-	   			 	recvInProgress = false;
-					indx = 0;
-					dataAvailable = false;
-					//setGPIO(0); // finished reading data, set GPIO pin to logic LOW
-	  			}
-			}
-			else if (incomingByte[0] == startMarker) {
-				//cout << "Received start marker...\n";
-	  			recvInProgress = true; // start to fill the message buffer if we received the start marker
+				receiver_msg[0] = '\0'; // clear the buffer for the next read() call
+				dataAvailable = false; // stop reading from the serial port
+
+				// Need to flush the buffer to prevent build up of delayed data (by 1-2 sec)
+	  			tcflush(serial_port_read,TCIOFLUSH);
 			}
 		}
 	}
 }
 
+float Receiver::clip(float input, float lower_bound, float upper_bound) {
+  return std::max(lower_bound, std::min(input, upper_bound));
+}
 
-// Converts char array received message to a vector of floats
+// Converts char array received message to a float array
 void Receiver::convertMessage() {
-	chars_array = strtok(receivedMsg, ",");
-	while(chars_array) {
-        convertedMsg.push_back(atof(chars_array));
-        chars_array = strtok(NULL, ",");
-    }
+	receiver_msg_ptr = strtok(receiver_msg, ",");
+
+	int count = 0;
+	while(receiver_msg_ptr) {
+		std::string tmp1 = receiver_msg_ptr;
+
+		recv_values[count] = (float)atof(tmp1.c_str());
+		count = count + 1;
+
+		receiver_msg_ptr = strtok(NULL, ",");
+	}
 }
 
 void Receiver::setup_port() {
-	serial_port = open(path.c_str(), O_RDWR | O_NOCTTY);
+	serial_port_read = open(readPath.c_str(), O_RDWR | O_NOCTTY);
 
-	if(serial_port < 0) {
+	if(serial_port_read < 0) {
 		printf("Error %i from open: %s\n", errno, strerror(errno));			
 	}
 
 	// Read in existing settings, and handle any error
-	if(tcgetattr(serial_port, &tty) != 0) {
+	if(tcgetattr(serial_port_read, &tty) != 0) {
 		printf("Error %i from tcgetattr: %s\n", errno, strerror(errno));
 	}
 
@@ -219,7 +184,7 @@ void Receiver::setup_port() {
 	cfsetospeed(&tty, B460800);
 
 	// Save tty settings, also checking for error
-  	if (tcsetattr(serial_port, TCSANOW, &tty) != 0) {
+  	if (tcsetattr(serial_port_read, TCSANOW, &tty) != 0) {
   		printf("Error %i from tcsetattr: %s\n", errno, strerror(errno));
   	}
 }
@@ -230,19 +195,17 @@ void Receiver::read_intent()
 		
 		//std::cout << "Reading receiver" << std::endl;
 
-		readData();
+		readData(); // Get receiver data over Serial from Arduino
 
-		///*
-		//For testing without receiver connected
-	  	Current_Receiver_Values.thrust = convertedMsg[0];
-	  	Current_Receiver_Values.pitch = convertedMsg[1];
-	  	Current_Receiver_Values.roll = convertedMsg[2];
-	  	Current_Receiver_Values.yaw = convertedMsg[3];
-	  	Current_Receiver_Values.aux1 = convertedMsg[4];
-	  	Current_Receiver_Values.aux2 = convertedMsg[5];
-	  	Current_Receiver_Values.dial1 = convertedMsg[6];
+	  	Current_Receiver_Values.thrust = clip(recv_values[0], 0, 1);
+		Current_Receiver_Values.pitch = clip(recv_values[1], -1, 1);
+		Current_Receiver_Values.roll = clip(recv_values[2], -1, 1);
+		Current_Receiver_Values.yaw = clip(recv_values[3], -1, 1);
+		Current_Receiver_Values.dial1 = clip(recv_values[4], -1, 1);
+		Current_Receiver_Values.aux1 = clip(recv_values[5], 0, 1);
+		Current_Receiver_Values.aux2 = clip(recv_values[6], 0, 1);
 
-	  	convertedMsg.clear(); // clear vector containing the data from Arduino
+	  	//recv_floats_array.clear(); // clear vector containing the data from Arduino
 
 	  	// Print for debugging
 		/*std::cout << "TPRYAAD: ";

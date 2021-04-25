@@ -2,7 +2,16 @@
 #define AUTOPILOT2_LOCATION_H
 
 #include <iostream>
+#include <fstream>
 #include <cstdio>
+#include <string.h>
+
+#include <fcntl.h>
+#include <errno.h>
+#include <termios.h>
+#include <unistd.h>
+#include <stdlib.h>
+#include <stdint.h>
 
 #include "XPlane.h"
 
@@ -36,6 +45,24 @@ class Location
 		void init();
 		void estimate();
 		void Log();
+
+		void readData();
+		void setup_port();
+		void convertMessage();
+
+		std::string readPath = "/dev/ttyACM0"; // reading IMU and Receiver data from the programming port of the Arduino
+		int serial_port_read;
+		struct termios tty;
+
+		// Location data consists of 6 flaots, each 8 bytes long (+/- 000.000) and separated by a comma
+		static const int numBytes = 54;
+		char startMarker = '&';
+		//char endMarker = '>';
+		bool dataAvailable;
+		char incomingByte[1];
+		char location_msg[numBytes];
+		char* location_msg_ptr;
+		float location_vals[6];
 
 
 		//imu::Vector<3> euler;
