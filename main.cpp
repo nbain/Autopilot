@@ -86,6 +86,7 @@ int main()
 
 	_Location.init();
 	_Receiver.init();
+	_Control.setup_port();
 
 	std::cout << "Starting loop" << std::endl;
 

@@ -35,6 +35,23 @@ class Control
 
 	public:
 
+		// Functions & members for sending PWM data over Serial //
+
+		void setup_port();
+		void writeData();
+		void convertFloatsToString();
+
+		std::string writePath = "/dev/ttyACM1"; // writing PWM data to the native port of the Arduino
+		int serial_port_write;
+		struct termios options;
+
+		// PWM data consists of 12 pulses, each 4 bytes and separated by a comma + a start marker
+		static const int numBytes = 61;
+		char pwm_msg_buffer[numBytes];
+		int pwm_vals[12];
+
+		// Functions & members for sending PWM data over Serial //
+
 		std::chrono::steady_clock::time_point program_start_time;
 
 		std::chrono::steady_clock::time_point loop_end_time;
@@ -453,7 +470,6 @@ class Control
 
 
 	public:
-
 		void set_motor_and_servo_parameters();
 
 		float get_fan_aero_torque(int fan_number, float rotational_velocity);

@@ -2522,20 +2522,112 @@ void Control::send_pwms()
     	{
 
     		//Send pulse to GPIO pin
-			send_microseconds(propulsion_units[i].gpio_pin, propulsion_units[i].PWM_micros);
+			//send_microseconds(propulsion_units[i].gpio_pin, propulsion_units[i].PWM_micros);
+			pwm_vals[i] = propulsion_units[i].PWM_micros;
+
 
 		}
 	
 
-	/*
+	
 	//Send servo PWMs to GPIOs
 	for (int i=0; i<4; i++)
     	{
-			send_microseconds(servo_units[i].gpio_pin, servo_units[i].PWM_micros);
+			//send_microseconds(servo_units[i].gpio_pin, servo_units[i].PWM_micros);
+			pwm_vals[i+8] = servo_units[i].PWM_micros;
 
 		}
-*/
 
+	convertFloatsToString();
+	writeData();
+}
+
+// Takes array of floats and puts it into character buffer, separated by a comma, in preparation for Serial write
+void Control::convertFloatsToString() {
+	strcpy(pwm_msg_buffer, "#"); // copy the start marker for PWM data to the beginning of the buffer
+
+	char tmp[5];
+
+	for(int i=0; i<12; i++) {
+		 snprintf(tmp, sizeof(tmp), "%d", pwm_vals[i]);
+
+		 strcat(pwm_msg_buffer, tmp);
+		 strcat(pwm_msg_buffer, ",");
+	}
+}
+
+// Sends character array of pwm values through the serial port
+// Should include error checking and logging in here at some point
+void Control::writeData() {
+	int n = write(serial_port_write, pwm_msg_buffer, sizeof(pwm_msg_buffer));
+	pwm_msg_buffer[0] = '\0'; // clear the buffer for the next write() call
+
+	printf("Wrote %d bytes", n);
+}
+
+void Control::setup_port() {
+	serial_port_write = open(writePath.c_str(), O_RDWR | O_NOCTTY);
+
+	if(serial_port_write < 0) {
+		printf("Error %i from open: %s\n", errno, strerror(errno));			
+	}
+
+	// Read in existing settings, and handle any error
+	if(tcgetattr(serial_port_write, &options) != 0) {
+		printf("Error %i from tcgetattr: %s\n", errno, strerror(errno));
+	}
+
+	/*options.c_cflag &= ~PARENB; // Clear parity bit, disabling parity (most common)
+	options.c_cflag &= ~CSTOPB; // Clear stop field, only one stop bit used in communication (most common)
+	options.c_cflag &= ~CSIZE; // Clear all bits that set the data size 
+	options.c_cflag |= CS8; // 8 bits per byte (most common)
+	options.c_cflag &= ~CRTSCTS; // Disable RTS/CTS hardware flow control (most common)
+	options.c_cflag |= CREAD | CLOCAL; // Turn on READ & ignore ctrl lines (CLOCAL = 1)
+
+	options.c_lflag &= ~ICANON; // Disable canonical mode
+	options.c_lflag &= ~IEXTEN; // Disable extended functions
+	options.c_lflag &= ~ECHO; // Disable echo
+	options.c_lflag &= ~ECHOE; // Disable erasure
+	options.c_lflag &= ~ECHONL; // Disable new-line echo
+	options.c_lflag &= ~ISIG; // Disable interpretation of INTR, QUIT and SUSP
+	options.c_iflag &= ~(IXON | IXOFF | IXANY); // Turn off s/w flow ctrl
+	options.c_iflag &= ~(IGNBRK|BRKINT|PARMRK|ISTRIP|INLCR|IGNCR|ICRNL|INPCK); // Disable any special handling of received bytes
+
+	options.c_oflag &= ~OPOST; // Prevent special interpretation of output bytes (e.g. newline chars)
+	options.c_oflag &= ~ONLCR; // Prevent conversion of newline to carriage return/line feed
+
+	//.c_lflag |= ICANON; // run in canonical mode (receive data line by line)
+	//options.c_cflag &= ~CRTSCTS; // disable hardware flow control
+
+	struct serial_struct serial;
+	ioctl(serial_port_write, TIOCGSERIAL, &serial);
+	serial.flags |= ASYNC_LOW_LATENCY;
+	ioctl(serial_port_write, TIOCGSERIAL, &serial);
+	
+	//options.c_lflag &= ~(ICANON | ECHO | ECHOE | ECHONL | ISIG | IEXTEN);
+
+	options.c_cc[VTIME] = 0; // no timeout
+	options.c_cc[VMIN] = numBytes; // always wait for expected number of bytes*/
+
+	options.c_lflag |= ICANON;
+	options.c_cflag &= ~CRTSCTS;
+
+	/*options.c_cflag |= (CS8 | CREAD | CLOCAL); // 8 bits per byte
+	options.c_cflag &= ~PARENB;
+	options.c_cflag &= ~CSTOPB;
+
+	options.c_oflag &= ~(OPOST | ONLCR);
+	options.c_iflag &= ~(IXON | IXOFF | IXANY);
+	options.c_iflag &= ~(IGNBRK | BRKINT | PARMRK | ISTRIP | INLCR | IGNCR | ICRNL);*/
+	cfsetispeed(&options, B460800);
+	cfsetospeed(&options, B460800);
+
+	// Save options settings, also checking for error
+  	if (tcsetattr(serial_port_write, TCSANOW, &options) != 0) {
+  		printf("Error %i from tcsetattr: %s\n", errno, strerror(errno));
+  	}
+
+	//tcflush(serial_port_write, TCIOFLUSH);
 }
 
 
