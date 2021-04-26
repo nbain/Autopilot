@@ -39,7 +39,7 @@ class Control
 
 		void setup_port();
 		void writeData();
-		void convertFloatsToString();
+		void convertIntToString();
 
 		std::string writePath = "/dev/ttyACM1"; // writing PWM data to the native port of the Arduino
 		int serial_port_write;
@@ -49,6 +49,7 @@ class Control
 		static const int numBytes = 61;
 		char pwm_msg_buffer[numBytes];
 		int pwm_vals[12];
+
 
 		// Functions & members for sending PWM data over Serial //
 
