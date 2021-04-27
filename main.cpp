@@ -86,7 +86,7 @@ int main()
 
 	_Location.init();
 	_Receiver.init();
-	_Control.setup_port();
+	//_Control.setup_port();
 
 	std::cout << "Starting loop" << std::endl;
 
@@ -96,11 +96,11 @@ int main()
 		usleep(4000);
 		auto start = steady_clock::now();
 
-        _Location.estimate(); // takes 4000-8000us
+        _Location.estimate(); 
 
-		_Receiver.read_intent(); // takes 2000-4000us, 1500-2500us with low-latency enabled
+		_Receiver.read_intent(); 
 
-		//_Control.run(&_Location.Current_Location, &_Receiver.Current_Receiver_Values);
+		_Control.run(&_Location.Current_Location, &_Receiver.Current_Receiver_Values);
 
 		
 		auto end = steady_clock::now();

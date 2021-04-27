@@ -2216,11 +2216,11 @@ void Control::motor_rot_vel_delta_to_pwm(int fan_number)
 
 
 
-		//printf("\n Fan num: %i   ", fan_number);
-		//printf("Rot vel delta req: %f   ", rot_vel_delta_req);
-		//printf("Rot vel after loop time req: %f   ", current_rot_vel + rot_vel_delta_req);
-		//printf("PWM: %f  ", PWM_micros_guess);
-		//printf("rot_vel after loop time: %f  \n  ", powertrain_model_output.rot_vel_after_loop_time);
+		printf("\n Fan num: %i   ", fan_number);
+		printf("Rot vel delta req: %f   ", rot_vel_delta_req);
+		printf("Rot vel after loop time req: %f   ", current_rot_vel + rot_vel_delta_req);
+		printf("PWM: %f  ", PWM_micros_guess);
+		printf("rot_vel after loop time: %f  \n  ", powertrain_model_output.rot_vel_after_loop_time);
 		
 
 
@@ -2462,7 +2462,10 @@ void Control::servo_angle_delta_to_pwm_required(int servo_num)
 		//Set pulse width
 		servo_units[servo_num].PWM_micros = PWM_micros;
 
-
+		printf("Servo num: %d", servo_num);
+		printf("Angle error required: %f\t", angle_error_required);
+		printf("Steadys state angle command: %f\t", steady_state_angle_command_required);
+		printf("Servo PWM: %f\n", PWM_micros);
 
 
 
@@ -2524,12 +2527,16 @@ void Control::send_pwms()
 		}
 
 	//for debugging, comment out when not in use
+	printf("\tAnalog write inputs:" );
 	for(int i=0; i<12; i++) {
-		pwm_vals[i] = 1000 + 100*i;
+		//pwm_vals[i] = 1000 + 100*i;
+		std::cout << pwm_vals[i] << ",";
 	}
 
+	setup_port();
 	convertIntToString();
 	writeData();
+	close(serial_port_write);
 }
 
 // Takes array of integers and puts it into character buffer, separated by a comma, in preparation for Serial write
@@ -2553,7 +2560,7 @@ void Control::convertIntToString() {
 void Control::writeData() {
 	int n = write(serial_port_write, &pwm_msg_buffer, sizeof(pwm_msg_buffer));
 
-	printf("Sent message: %s", pwm_msg_buffer);
+	//printf("Sent message: %s", pwm_msg_buffer);
 	printf("\tWrote %d bytes", n);
 
 	pwm_msg_buffer[0] = '\0'; // clear the buffer for the next write() call
@@ -2713,7 +2720,7 @@ void Control::send_XPlane_inputs()
 	
 
 	//Send fan forces and moments generated at the end of the current loop to XPlane
-	XPlane_for_Control.send_output_to_XPlane(force_and_moment_array, servo_angle_array, loop_time);
+	//XPlane_for_Control.send_output_to_XPlane(force_and_moment_array, servo_angle_array, loop_time);
 
 	//printf("\n Total fan forces [rpy xz y(=0)]: ");
 
@@ -2791,8 +2798,8 @@ void Control::run(Location::LOCATION * Current_Location_Pointer, Receiver::RECEI
 		//acceleration_controller(Location, Receiver); //32 microseconds
 		Eigen::MatrixXf target_accelerations = acceleration_controller();
 
-		////std::cout << "target_accelerations: " << std::endl;
-		////std::cout << target_accelerations << std::endl;
+		std::cout << "target_accelerations: " << std::endl;
+		std::cout << target_accelerations << std::endl;
 
 	
 		//Forces and moments required to generate accelerations from controller
@@ -2811,8 +2818,8 @@ void Control::run(Location::LOCATION * Current_Location_Pointer, Receiver::RECEI
 		//std::cout << "end_of_loop_motor_vels_and_servo_angles: " << std::endl;
 		//std::cout << end_of_loop_motor_vels_and_servo_angles.transpose()  << std::endl;
 
-		//std::cout << "longterm target_vels_and_angles: " << std::endl;
-		//std::cout << longterm_target_vels_and_angles.transpose()  << std::endl;
+		std::cout << "longterm target_vels_and_angles: " << std::endl;
+		std::cout << longterm_target_vels_and_angles.transpose()  << std::endl;
 
 		//std::cout << "longterm target rot_vel_and_servo_angle_deltas: " << std::endl;
 		//std::cout << theoretical_rot_vel_and_servo_angle_deltas.transpose()  << std::endl;
@@ -2829,19 +2836,19 @@ void Control::run(Location::LOCATION * Current_Location_Pointer, Receiver::RECEI
 		//Get commanded rotational velocity or servo angle delta, scaled down to desired deltas achievable in next timestep
 		get_next_loop_rot_vel_and_servo_angle_deltas();
 
-		//std::cout << "Delta rot vels and angles in next time step: " << std::endl;
-		//std::cout << next_loop_rot_vel_and_servo_angle_deltas.transpose()  << std::endl;
+		std::cout << "Delta rot vels and angles in next time step: " << std::endl;
+		std::cout << next_loop_rot_vel_and_servo_angle_deltas.transpose()  << std::endl;
 
-		//printf(" \n Max pos deltas:");
+		printf(" \n Max pos deltas:");
 		for (int i=0; i<8; i++)
     	{
-    		//printf(" %f ", propulsion_units[i].max_positive_rot_vel_delta);
+    		printf(" %f ", propulsion_units[i].max_positive_rot_vel_delta);
 		}
 		
-		//printf(" \n Max neg deltas:");
+		printf(" \n Max neg deltas:");
 		for (int i=0; i<8; i++)
     	{
-    		//printf(" %f ", propulsion_units[i].max_negative_rot_vel_delta);
+    		printf(" %f ", propulsion_units[i].max_negative_rot_vel_delta);
 		}
 		
 

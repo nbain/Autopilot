@@ -7,7 +7,7 @@
 #define CLKPIN 21
 
 //#define GPIO 12
-//#define CHECK_PIN 9
+#define CHECK_PIN 31
 
 #define FRONT_RIGHT_SERVO_PIN 2
 #define FRONT_LEFT_SERVO_PIN 3
@@ -68,7 +68,7 @@ char incomingByte;
 //char previousByte = '0';
 const char numBytes = 60;
 char receivedMsg[numBytes];
-char expectedMsg[] = "Hello! This message was sent from the control code.";
+//char expectedMsg[] = "Hello! This message was sent from the control code.";
 
 boolean dataAvailable;
 
@@ -125,7 +125,6 @@ PROPULSION_UNIT bl_servo{BACK_LEFT_SERVO_PIN, 0};
 PROPULSION_UNIT propulsion_units[12] = {fr_motor, fl_motor, br_motor, bl_motor, bmr_motor, bml_motor, bfr_motor, bfl_motor, 
                                         fr_servo, fl_servo, br_servo, bl_servo};
                                         
-
 char* PWM_msg_ptr;
 
 RECEIVER Current_Receiver_Values;
@@ -155,8 +154,8 @@ void setup() {
   Serial.begin(460800);
   SerialUSB.begin(460800);
 
-  pinMode(LED_BUILTIN, OUTPUT);
-  //pinMode(CHECK_PIN, OUTPUT);
+  //pinMode(LED_BUILTIN, OUTPUT);
+  pinMode(CHECK_PIN, OUTPUT);
 
   // Motors & servos setup
   for(int i=0; i<12; i++) {
@@ -220,8 +219,14 @@ void loop() {
 
   previousState = state;*/
 
+  // Reading PWM data from native serial port isn't working because the serial port
+  // keeps changing everytime we run the control loop
+  // Reading it from the programming port works but then the functions that write
+  // location and receiver data over the native port fail
+  
   updateReceiver(&Current_Receiver_Values);
   updateLocation(&Current_Location);
+  //Serial.println("testing...");
   writeLocationData();
   writeReceiverData();
   //Serial.flush(); // empty the buffer
@@ -334,7 +339,7 @@ void writeLocationData() {
   for(int i=7; i<len; i++) {
     // Convert floats to character arrays
     // Location data is 8 total characters with precision of 3
-    dtostrf(*dataToSend[i], 8, 3, floatBuffer); // converts float to character array, 5 total characters with precision of 2
+    dtostrf(*dataToSend[i], 7, 3, floatBuffer); // converts float to character array, 5 total characters with precision of 2
     Serial.print(floatBuffer);
     Serial.print(",");
   }
@@ -352,7 +357,7 @@ void readPWMS() {
 
     if(incomingByte == pwm_startMarker) {
       size_t n = SerialUSB.readBytes(receivedMsg, 59);
-      SerialUSB.flush();
+      //SerialUSB.flush();
       //Serial.println(receivedMsg);
       //checkMsg();
       convertMsg();
@@ -374,34 +379,28 @@ void convertMsg() {
     PWM_msg_ptr = strtok(NULL, ",");
   }
 
+  bool flag=false;
+
   // Print debugging, ignore
-  /*for(int i=0; i<12; i++) {
-    Serial.print(propulsion_units[i].PWM_micros);
-    Serial.print("\t");
+  for(int i=0; i<12; i++) {
+    if(propulsion_units[i].PWM_micros != 1000 + 100*i) {
+      flag = true;
+      break;
+    }
   }
-  Serial.println();*/
+
+  if(flag)
+    digitalWrite(CHECK_PIN, LOW);
+  else
+    digitalWrite(CHECK_PIN, HIGH);
 }
 
 void send_PWMS() {
   for(int i=0; i<12; i++) {
-    send_microseconds(propulsion_units[i].pin, propulsion_units[i].PWM_micros);
+    analogWriteResolution(12);
+    analogWrite(propulsion_units[i].pin, propulsion_units[i].PWM_micros);
+    //analogWrite(propulsion_units[i].pin, 690);
   }
-}
-
-void send_microseconds(int motor_pin, float microseconds) {
-  float PWM_frequency = 435;
-  float PWM_period_micros = 1000000 / PWM_frequency;
-  float precise_bit_value = microseconds / PWM_period_micros * 1023;
-
-  int nearest_bit_value = int(precise_bit_value); //Changed from round() because Eigen library seems to redefine round().  Always "rounds" down.
-
-  //Prevent from sending an always-on signal
-  if (microseconds > PWM_period_micros){
-    nearest_bit_value = 1022;
-  }
-
-  analogWriteResolution(12);
-  analogWrite(motor_pin, nearest_bit_value);
 }
 
 // only use for debugging

@@ -212,18 +212,18 @@ void Receiver::read_intent()
 		Current_Receiver_Values.pitch = clip(recv_values[1], -1, 1);
 		Current_Receiver_Values.roll = clip(recv_values[2], -1, 1);
 		Current_Receiver_Values.yaw = clip(recv_values[3], -1, 1);
-		Current_Receiver_Values.dial1 = clip(recv_values[4], -1, 1);
-		Current_Receiver_Values.aux1 = clip(recv_values[5], 0, 1);
-		Current_Receiver_Values.aux2 = clip(recv_values[6], 0, 1);
+		Current_Receiver_Values.aux1 = clip(recv_values[4], 0, 1);
+		Current_Receiver_Values.aux2 = clip(recv_values[5], 0, 1);
+		Current_Receiver_Values.dial1 = clip(recv_values[6], -1, 1);
 
-		std::cout << "\tTPRYDAA: ";
+		std::cout << "\tTPRYAAD: ";
 		printf("%5.2f", Current_Receiver_Values.thrust);
 		printf("%5.2f", Current_Receiver_Values.pitch);
 		printf("%5.2f", Current_Receiver_Values.roll);
 		printf("%5.2f", Current_Receiver_Values.yaw);
-		printf("%5.2f", Current_Receiver_Values.dial1);
 		printf("%5.2f", Current_Receiver_Values.aux1);
 		printf("%5.2f", Current_Receiver_Values.aux2);
+		printf("%5.2f", Current_Receiver_Values.dial1);
 
 	  	//recv_floats_array.clear(); // clear vector containing the data from Arduino
 
