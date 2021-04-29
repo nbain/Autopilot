@@ -7,6 +7,7 @@
 
 
 #include <iostream>
+#include <algorithm> //For max()
 #include <cstdio>
 #include <chrono>
 #include <cstdint>
@@ -14,17 +15,26 @@
 #include <Eigen/LU> 
 #include <Eigen/QR>
 
+//For PCA9685.  From: https://github.com/mincrmatt12/PCA9685/blob/master/src/PCA9685.cpp
+#include <cstdlib>
+#include <unistd.h>
+#include <linux/i2c-dev.h>
+#include <sys/ioctl.h>
+#include <fcntl.h>
+#include <stdexcept>
+
+#include <linux/i2c.h>
+#include <stdint.h>
+#include <stdio.h>
+
+
+
 #include "XPlane.h"
 #include "Location.h"
 #include "Receiver.h"
 
 
-
-
-
 #define e 2.718281828
-
-
 
 
 
@@ -35,29 +45,27 @@ class Control
 
 	public:
 
-		// Functions & members for sending PWM data over Serial //
+		/*
+		Weak yaw control
+		Wing pitching/hover control loss
+		*/
 
-		void setup_port();
-		void writeData();
-		void convertIntToString();
+		bool verbose = false;
 
-		std::string writePath = "/dev/ttyACM1"; // writing PWM data to the native port of the Arduino
-		int serial_port_write;
-		struct termios options;
-
-		// PWM data consists of 12 pulses, each 4 bytes and separated by a comma + a start marker
-		static const int numBytes = 61;
-		char pwm_msg_buffer[numBytes];
-		int pwm_vals[12];
-
-
-		// Functions & members for sending PWM data over Serial //
+		int i2cHandle;
+		int PCA9685_I2C_address = 0x40;
+		uint16_t PRESCALE_VAL = 13; //hz
+		// Prescale value of 13 maps to PWM frequency of 437.4 Hz
+		float PCA9685_FREQ = 437.4;
 
 		std::chrono::steady_clock::time_point program_start_time;
 
 		std::chrono::steady_clock::time_point loop_end_time;
 
 		std::chrono::steady_clock::time_point last_loop_end_time;
+
+		std::chrono::steady_clock::time_point end;
+		std::chrono::steady_clock::time_point last_end;
 
 
 		//Make pointers to location and receiver structs available to all functions
@@ -67,13 +75,7 @@ class Control
 
 
 		unsigned int loop_time_us;
-		unsigned int loop_time2;
 
-		unsigned int loop_time3;
-
-		float loop_time = 0.015;
-
-		//unsigned int last_loop_end_time;
 
 
 		float vehicle_mass = 4; //Vehicle mass in kg.
@@ -82,12 +84,11 @@ class Control
 		float yaw_moment_of_inertia = 1.165; //Yaw moment of inertia in kg*m^2
 
 		float commands_sent_time; //Time of start of control loop in microseconds
-		//float loop_time = 0.015; //Loop time in seconds.  Updated as loop runs.
+		float loop_time = 0.015; //Loop time in seconds.  Updated as loop runs.
 
 
 		float servo_supply_voltage = 6.21;
 		float batt_voltage = 12.6;
-		float inflow_velocity = 0; //Inflow velocity in m/s
 
 		float test_input = 0;
 		float test_pwm = 1040;
@@ -212,7 +213,7 @@ class Control
 
 			float rotational_velocity_delta_required; //Commanded rotational velocity delta in rad/sec between end of current loop and end of next loop
 			float motor_torque_required; //Motor torque in Nm required to achieve rotational velocity delta in next loop time
-			float PWM_micros; //PWM microseconds sent at end of last control loop
+			float PWM_micros = 1040; //PWM microseconds sent at end of last control loop
 
 		} ;
 
@@ -471,6 +472,7 @@ class Control
 
 
 	public:
+
 		void set_motor_and_servo_parameters();
 
 		float get_fan_aero_torque(int fan_number, float rotational_velocity);
@@ -525,6 +527,8 @@ class Control
 		//void acceleration_controller(Location::LOCATION *, Receiver::RECEIVER *);
 		Eigen::MatrixXf acceleration_controller();
 
+		Eigen::MatrixXf iterate_thrusts_and_angles(Eigen::MatrixXf thrusts_and_angles_guess, Eigen::MatrixXf target_forces_and_moments, float accuracy_requirement);
+
 		Eigen::MatrixXf accelerations_to_forces_and_moments(Eigen::MatrixXf target_accelerations);
 		void forces_and_moments_to_thrusts_and_angles(Control::FORCES_AND_MOMENTS *);
 		void thrusts_and_angles_to_pwms(Control::THRUSTS_AND_ANGLES *);
@@ -533,6 +537,13 @@ class Control
 		void send_pwms();
 		void send_microseconds(int motor_pin, float microseconds);
 		void send_XPlane_inputs();
+
+
+		void init_PCA9685();
+		void set_PCA9865_register(uint8_t reg, uint8_t val);
+		void setPWM(int channel, int on, int off);
+		void setPWM_Fast(int channel, int off);
+
 
 		//void run();
 		void run(Location::LOCATION *, Receiver::RECEIVER *);

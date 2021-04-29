@@ -16,6 +16,7 @@
 #include <stdlib.h>
 #include <stdint.h>
 
+
 #include "XPlane.h"
 
 /*
@@ -25,16 +26,6 @@ https://stackoverflow.com/questions/625799/resolve-build-errors-due-to-circular-
 Instead of doing #include "XPlane.h", use class XPlane (not super clear )
 */
 //class XPlane;
-
-//#include "main.h"
-
-/*
-#include <Arduino.h>
-#include <Adafruit_Sensor.h>
-#include <Adafruit_BNO055.h>
-#include <utility/imumaths.h>
-*/
-
 
 
 
@@ -53,7 +44,8 @@ class Location
 		void setup_port();
 		void convertMessage();
 
-		std::string readPath = "/dev/ttyACM0"; // reading IMU and Receiver data from the programming port of the Arduino
+
+		std::string readPath = "/dev/serial/by-id/usb-Arduino__www.arduino.cc__Arduino_Due_Prog._Port_5573030313735171E0F0-if00"; // reading IMU and Receiver data from the programming port of the Arduino
 		int serial_port_read;
 		struct termios options;
 
@@ -66,35 +58,6 @@ class Location
 		char location_msg[numBytes];
 		char* location_msg_ptr;
 		float location_vals[6];
-
-
-		//imu::Vector<3> euler;
-		//imu::Vector<3> euler_rates;
-		//sensors_event_t orientationEvent, ratesEvent;
-
-
-		int timeSinceReset;
-		int lastReset = 7000;
-		int reset_count;
-
-		float yaw_correction;
-
-
-		float last_roll;
-		float last_pitch;
-		float last_yaw;
-		float last_roll_rate;
-		float last_pitch_rate;
-		float last_yaw_rate;
-		int last_time;
-
-		float last_roll2;
-		float last_pitch2;
-		float last_yaw2;
-		float last_roll_rate2;
-		float last_pitch_rate2;
-		float last_yaw_rate2;
-		int last_time2;
 
 
 		struct LOCATION
@@ -113,17 +76,26 @@ class Location
 			float yaw_acc;
 
 
-			//Will fill in position - lat, long, height MSL - when ready
+			float longitudinal_true_airspeed; //Airspeed parallel to longitudinal axis, m/s
+			float longitudinal_Q; //Dynamic pressure along longitudinal axis.  Can be negative.
+			float vertical_speed; //Velocity in vertical direction, m/s (not airspeed - though should be very close to vertical true airspeed)
 
-			float time; //In seconds. 
+			float latitude; //Latitude in degrees
+			float longitude; //Longitude in degrees
+			float altitude_MSL; //Altitude above sea-level, meters
+
+			float altitude_AGL; //Altitude above ground-level, meters
+
+			float AOA; //Angle of attack, in degrees
+
+			float air_density; //Air density in kg/m^3
+			float air_density_fraction; //Fraction of sea-level, STP air density (1.2247 kg/m^3)
+
+			float time; //Seconds after program start 
 
 		};
 
 		LOCATION Current_Location; //Most recent location data
-
-
-
-		
 
 
 };

@@ -81,7 +81,7 @@ class Receiver //used to be receiverModule
 		void setup_port();
 		void convertMessage();
 
-		std::string readPath = "/dev/ttyACM0"; // reading IMU and Receiver data from the programming port of the Arduino
+		std::string readPath = "/dev/serial/by-id/usb-Arduino__www.arduino.cc__Arduino_Due_Prog._Port_5573030313735171E0F0-if00"; // reading IMU and Receiver data from the programming port of the Arduino
 		int serial_port_read;
 		struct termios options;
 

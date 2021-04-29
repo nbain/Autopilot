@@ -113,7 +113,7 @@ void Receiver::readData() {
 		else {			
 			if (incomingByte[0] == startMarker) {
 				int n2 = read(serial_port_read, &receiver_msg, sizeof(receiver_msg));
-				std::cout << count << " calls to read()\t";
+				//std::cout << count << " calls to read()\t";
 				
 				// Convert the character array to a float array
 				convertMessage();
@@ -216,14 +216,25 @@ void Receiver::read_intent()
 		Current_Receiver_Values.aux2 = clip(recv_values[5], 0, 1);
 		Current_Receiver_Values.dial1 = clip(recv_values[6], -1, 1);
 
-		std::cout << "\tTPRYAAD: ";
+		std::ofstream LOG;
+		LOG.open("testlog.txt", std::ios::out | std::ios::app);	
+		LOG << "Receiver TPRYAAD: ";
+		LOG << Current_Receiver_Values.thrust << ", ";
+		LOG << Current_Receiver_Values.pitch << ", ";
+		LOG << Current_Receiver_Values.roll << ", ";
+		LOG << Current_Receiver_Values.yaw << ", ";
+		LOG << Current_Receiver_Values.aux1 << ", ";
+		LOG << Current_Receiver_Values.aux2 << ", ";
+		LOG << Current_Receiver_Values.dial1 << "\n\n";
+
+		/*std::cout << "\tTPRYAAD: ";
 		printf("%5.2f", Current_Receiver_Values.thrust);
 		printf("%5.2f", Current_Receiver_Values.pitch);
 		printf("%5.2f", Current_Receiver_Values.roll);
 		printf("%5.2f", Current_Receiver_Values.yaw);
 		printf("%5.2f", Current_Receiver_Values.aux1);
 		printf("%5.2f", Current_Receiver_Values.aux2);
-		printf("%5.2f", Current_Receiver_Values.dial1);
+		printf("%5.2f", Current_Receiver_Values.dial1);*/
 
 	  	//recv_floats_array.clear(); // clear vector containing the data from Arduino
 

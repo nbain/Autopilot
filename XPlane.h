@@ -55,9 +55,9 @@ class XPlane
 			float longitude;
 			float elevation;
 
-			float airspeed;
+			float airspeed_kias;
 			float dist_agl;
-			float baro_alt;
+			float static_pressure_inHg;
 
 			float OpenGL_acc_x;
 			float OpenGL_acc_y;
@@ -70,9 +70,11 @@ class XPlane
 			//Rotational velocities in radians/sec
 			float roll_rot_vel;
 			float pitch_rot_vel;
-			float yaw_rot_vel;
+			float heading_rot_vel;
 
 			float mag_heading;
+
+			float ambient_temp; //Ambient temperature in Celsius
 
 
 			//Calculated values
@@ -86,16 +88,27 @@ class XPlane
 			float pitch_rot_vel_calcd;
 			float heading_rot_vel_calcd;
 
+			float longitudinal_Q; //Dynamic pressure along longitudinal axis derived from indicated airspeed, in pascals.
+
 		} ;
 
 		XPLANE_DATA Current_XPlane_data;
 		XPLANE_DATA Last_XPlane_data;
 
+		int sock_send;
+		struct sockaddr_in myaddr_send;
+
+		int sock_recv;
+		struct sockaddr_in addr_recv;
+
 
 		int UDP_Recv(char * UDP_Received);
 		void get_data_from_XPlane();
 		int UDP_Send(int array[12]);
+		int UDP_Send_IP(char IP_addr[20]);
 		void send_output_to_XPlane(float force_and_moment_array[6], float servo_angle_array[4], float loop_time);
+
+		int UDP_Setup_Send();
 
 
 };

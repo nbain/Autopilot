@@ -1,9 +1,5 @@
 #include "Location.h"
-/*
-#include <Wire.h>
-#define SDAPIN 20
-#define CLKPIN 21
-*/
+
 /*
 Key thing about the BNO055 is fusion data is produced at 100 Hz - reading significantly faster than this (around 200 Hz) causes
 it to return only zeroes.
@@ -46,7 +42,6 @@ Braswell chip has ~1,100 pins.  7 I2C channels (14 pins).
 
 XPlane XPlane_for_Location;
 
-//Adafruit_BNO055 bno = Adafruit_BNO055(55);
 
 void Location::init()
 	{
@@ -54,59 +49,11 @@ void Location::init()
 
 		std::cout << "Starting IMU" << std::endl;
 		setup_port();
-		std::cout << "Finished setting up serial port...\n";
 
-/*
-	  //BNO055 reset - (Due pin 39 connected to BNO055 RST pin).  Need to do this after restarting after a bus loss or else have to try a couple times.
-	  
-	  pinMode(39, OUTPUT);
-	  digitalWrite(39, LOW);
-	  delay(1);
-	  digitalWrite(39, HIGH);
-	  delay(650);
-	   
+		//XPlane_for_Location.UDP_Setup_Recv();
 
-	   while(!bno.begin())
-	  {
-
-	      Serial.println("Starting I2C bus recovery - init");
-
-		  //try i2c bus recovery at 100kHz = 5uS high, 5uS low
-		  pinMode(SDAPIN, OUTPUT);//keeping SDA high during recovery
-		  digitalWrite(SDAPIN, HIGH);
-		  pinMode(CLKPIN, OUTPUT);
-		  for (int i = 0; i < 10; i++) { //9nth cycle acts as NACK
-		    digitalWrite(CLKPIN, HIGH);
-		    delayMicroseconds(5);
-		    digitalWrite(CLKPIN, LOW);
-		    delayMicroseconds(5);
-		  }
-
-		  //a STOP signal (SDA from low to high while CLK is high)
-		  digitalWrite(SDAPIN, LOW);
-		  delayMicroseconds(5);
-		  digitalWrite(CLKPIN, HIGH);
-		  delayMicroseconds(2);
-		  digitalWrite(SDAPIN, HIGH);
-		  delayMicroseconds(2);
-		  //bus status is now : FREE
-
-		  Serial.println("Bus recovery done - init");
-		  //return to power up mode
-		  pinMode(SDAPIN, INPUT);
-		  pinMode(CLKPIN, INPUT);
-
-	  }
-
-	  Serial.println("I2C bus up, BNO055 detected");
-
-
-		bno.setExtCrystalUse(true);
-
-*/
 
 	}
-
 
 // NOTE: can speed up Serial read by reading twice the message length and parsing for the start marker
 // rather than reading for the start marker one byte at a time
@@ -130,7 +77,7 @@ void Location::readData() {
 		else {			
 			if (incomingByte[0] == loc_startMarker) {
 				int n2 = read(serial_port_read, &location_msg, sizeof(location_msg));
-				std::cout << count << " calls to read()\t";
+				//std::cout << count << " calls to read()\t";
 				
 				// Convert the character array to a float array
 				convertMessage();
@@ -229,23 +176,6 @@ void Location::setup_port() {
 
 void Location::estimate()
 	{
-
-	//int start = micros();
-
-///*
-
-	/*
-	XPlane_for_Location.get_data_from_XPlane();	
-
-	Current_Location.pitch = XPlane_for_Location.Current_XPlane_data.pitch_rad;
-	Current_Location.roll = XPlane_for_Location.Current_XPlane_data.roll_rad;
-	Current_Location.heading = XPlane_for_Location.Current_XPlane_data.heading_rad;
-	Current_Location.pitch_rate = XPlane_for_Location.Current_XPlane_data.pitch_rot_vel_calcd;
-	Current_Location.roll_rate = XPlane_for_Location.Current_XPlane_data.roll_rot_vel_calcd;
-	Current_Location.heading_rate = XPlane_for_Location.Current_XPlane_data.heading_rot_vel_calcd;
-	Current_Location.time = XPlane_for_Location.Current_XPlane_data.flight_time;
-	*/
-
 	readData(); // Get location data over Serial from Arduino
 	Current_Location.roll = location_vals[0];
 	Current_Location.pitch = location_vals[1];
@@ -254,245 +184,147 @@ void Location::estimate()
 	Current_Location.pitch_rate = location_vals[4];
 	Current_Location.heading_rate = location_vals[5];
 
-	std::cout << "RPY: ";
+	std::ofstream LOG;
+	LOG.open("testlog.txt", std::ios::out | std::ios::app);	
+	LOG << "Location RPY: ";
+	LOG << Current_Location.roll << ", ";
+	LOG << Current_Location.pitch << ", ";
+	LOG << Current_Location.heading << ", ";
+	LOG << Current_Location.roll_rate << ", ";
+	LOG << Current_Location.pitch_rate << ", ";
+	LOG << Current_Location.heading_rate << "\n\n";
+	LOG.close();
+
+	Current_Location.air_density = 1.2;
+	Current_Location.air_density_fraction = 1;
+	Current_Location.longitudinal_Q = 0.0001;
+	Current_Location.longitudinal_true_airspeed = 0;
+	Current_Location.vertical_speed = 0;
+	Current_Location.AOA = 0;
+
+	/*std::cout << "RPY: ";
 	printf("%8.3f", Current_Location.roll);
 	printf("%8.3f", Current_Location.pitch);
 	printf("%8.3f", Current_Location.heading);
 	printf("%8.3f", Current_Location.roll_rate);
 	printf("%8.3f", Current_Location.pitch_rate);
-	printf("%8.3f\t", Current_Location.heading_rate);
+	printf("%8.3f\t", Current_Location.heading_rate);*/
 
+	/*auto start = std::chrono::steady_clock::now();
+
+///*
+
+	//std::cout << "Starting estimate()" << std::endl;
+
+	XPlane_for_Location.get_data_from_XPlane();	
+///*
+	Current_Location.pitch = XPlane_for_Location.Current_XPlane_data.pitch_rad;
+	Current_Location.roll = XPlane_for_Location.Current_XPlane_data.roll_rad;
+	Current_Location.heading = XPlane_for_Location.Current_XPlane_data.heading_rad;
+	Current_Location.pitch_rate = XPlane_for_Location.Current_XPlane_data.pitch_rot_vel_calcd;
+	Current_Location.roll_rate = XPlane_for_Location.Current_XPlane_data.roll_rot_vel_calcd;
+	Current_Location.heading_rate = XPlane_for_Location.Current_XPlane_data.heading_rot_vel_calcd;
+
+
+
+	Current_Location.time = XPlane_for_Location.Current_XPlane_data.flight_time;
+
+	//Static pressure in pascals
+	float static_pressure = XPlane_for_Location.Current_XPlane_data.static_pressure_inHg * 3386.39;
+
+	//Need sensor to measure - diurnal variation 37-90% avg for Oakley, KS in July
+	float relative_humidity = 0.5;
+
+	float ambient_temp_C = XPlane_for_Location.Current_XPlane_data.ambient_temp; //Ambient temp in degrees C
+	float ambient_temp_K = ambient_temp_C + 273.15;
+
+	//Teten's equation for water vapor pressure at saturation as function of temperature, in Pascals
+	float saturation_vapor_pressure_exponent = (17.27 * ambient_temp_C) / (ambient_temp_C + 237.3);
+	float saturation_vapor_pressure = 610.78 * std::exp(saturation_vapor_pressure_exponent);
+
+	float water_vapor_partial_pressure = relative_humidity * saturation_vapor_pressure; //Water vapor pressure in Pascals
+	float dry_air_partial_pressure = static_pressure - water_vapor_partial_pressure; //Dry air pressure in Pascals
+
+	float R = 8.31446; //Universal gas constant, J/(K * mol)
+	float dry_air_molar_mass = 0.0289652; //kg/mol
+	float water_vapor_molar_mass = 0.018016; //kg/mol
+
+	//Air density fundamentally a function of absolute pressure, relative humidity, and temperature
+	Current_Location.air_density = ((dry_air_partial_pressure * dry_air_molar_mass) + (water_vapor_partial_pressure * water_vapor_molar_mass)) / (R * ambient_temp_K);
+	Current_Location.air_density_fraction = Current_Location.air_density / 1.2247;
+
+	Current_Location.longitudinal_Q = XPlane_for_Location.Current_XPlane_data.longitudinal_Q;
+
+	float longitudinal_true_airspeed_abs = std::sqrt(std::abs(Current_Location.longitudinal_Q) / (0.5 * Current_Location.air_density));
+
+	//Allow for dynamic pressure in backwards direction
+	Current_Location.longitudinal_true_airspeed = std::copysignf(longitudinal_true_airspeed_abs, Current_Location.longitudinal_Q);
+
+
+
+	float elev_delta = XPlane_for_Location.Current_XPlane_data.elevation - XPlane_for_Location.Last_XPlane_data.elevation;
+	float elapsed_time = XPlane_for_Location.Current_XPlane_data.elapsed_time;
+	if (elapsed_time == 0){
+		elapsed_time = 0.01;
+	}
+	Current_Location.vertical_speed = elev_delta / elapsed_time;
+
+	float wing_incidence = 0;
+	Current_Location.AOA = std::atan(-Current_Location.vertical_speed / Current_Location.longitudinal_true_airspeed) + Current_Location.pitch + wing_incidence;
+
+	/*
+	printf("Temp: %f\n", ambient_temp_C);
+
+	printf("Static_pressure: %f\n", static_pressure);
+
+	printf("Air density: %f\n", Current_Location.air_density);
+
+	printf("Long true airspeed: %f\n", Current_Location.longitudinal_true_airspeed);
+
+	printf("Vertical speed: %f\n", Current_Location.vertical_speed);
+
+	printf("AOA: %f\n", AOA * 180 / M_PI);
+	*/
+
+//*/
+ 
 
 	//For testing without IMU connected
 	/*
 	Current_Location.pitch = 0.1;
 	Current_Location.roll = -0.1;
-	Current_Location.yaw = -0.1;
+	Current_Location.heading = -0.1;
 	Current_Location.pitch_rate = 0;
 	Current_Location.roll_rate = 0;
-	Current_Location.yaw_rate = 0;
-	*/
+	Current_Location.heading_rate = 0;
+	//*/
+/*
+	printf("time: %f  ", Current_Location.time);
 
+	printf("roll: %f ", Current_Location.roll);
+
+	printf("roll rate: %f ", Current_Location.roll_rate);
+
+	printf("pitch: %f  ", Current_Location.pitch);
+
+	printf("pitch rate: %f ", Current_Location.pitch_rate);
+
+	printf("heading: %f  ", Current_Location.heading);
+
+	printf("heading rate: %f\n", Current_Location.heading_rate);
+*/
+
+	/*auto end = std::chrono::steady_clock::now();
+
+	auto looptime = std::chrono::duration_cast<std::chrono::microseconds>(end-start).count();
+
+	std::cout << "Estimate() time: " << looptime << std::endl;*/
 
 	return;
 //*/
 
 
-	//int starting = micros();
-	//timeSinceReset = millis() - lastReset;
 
-	/*
-
-	//Do I2C bus recovery every time 0 only takes a few microseconds and prevents bus from dropping
-	//try i2c bus recovery at 100kHz = 5uS high, 5uS low
-	pinMode(SDAPIN, OUTPUT);//keeping SDA high during recovery
-	digitalWrite(SDAPIN, HIGH);
-	pinMode(CLKPIN, OUTPUT);
-	for (int i = 0; i < 2; i++) { //9nth cycle acts as NACK
-		digitalWrite(CLKPIN, HIGH);
-		delayMicroseconds(5);
-		digitalWrite(CLKPIN, LOW);
-		delayMicroseconds(5);
-	  }
-
-	//a STOP signal (SDA from low to high while CLK is high)
-	digitalWrite(SDAPIN, LOW);
-	delayMicroseconds(5);
-	digitalWrite(CLKPIN, HIGH);
-	delayMicroseconds(2);
-	digitalWrite(SDAPIN, HIGH);
-	delayMicroseconds(2);
-	//bus status is now : FREE
-
-  
-	//return to power up mode
-	pinMode(SDAPIN, INPUT);
-	pinMode(CLKPIN, INPUT);
-
-	Wire.begin();
-	Wire.setClock(100000); //Seems to have no effect on Location.estimate() speed from start to finish
-	
-
-  	//Haven't figured out why, but getEvent works (doesn't return zeros after a while) and getGv
-    bno.getEvent(&orientationEvent, Adafruit_BNO055::VECTOR_EULER);
-    bno.getEvent(&ratesEvent, Adafruit_BNO055::VECTOR_GYROSCOPE);
-*/
-
-
-/*
-Biggest problem here is BNO055 returning zeros.  Sensor itself needs to be reset to work again (not an I2C problem) either with the reset pin
-connected to GPIO or through an I2C command (bno.begin() will do this).
-Problem is, if reset in air, new zero will be in whatever position it's reset in.  So if call bno.begin(), need to adjust values by whatever they
-were beforehand
-
-*/
-	
-	/*
-	if (orientationEvent.orientation.z == 0 && orientationEvent.orientation.y == 0 && orientationEvent.orientation.x == 0  && \
-		ratesEvent.gyro.z == 0 && ratesEvent.gyro.y == 0 && ratesEvent.gyro.x == 0 && timeSinceReset > 2000){
-		
-			digitalWrite(39, LOW);
-			delayMicroseconds(1);
-			digitalWrite(39, HIGH);
-			delay(20);
-	
-			//Put in NDOF mode (sensor fusion) - this is what bno.begin() does by default
-			Wire.beginTransmission(0x28);         // Begin transmission to the slave address
-			Wire.write(0x3D);        //Put register address in transmit buffer
-			Wire.write(0x0C);
-			Wire.endTransmission();      // Send and keep connection alive.
-
-
-
-
-			bno.begin();
-			lastReset = millis();
-			Serial.print("RESETTING");
-			reset_count = reset_count + 1;
-
-			yaw_correction = last_yaw2;
-	}
-
-
-
-
-  	//In radians.
-  	Location.pitch = orientationEvent.orientation.z * M_PI / 180 - 0.045; //Pitch - wide side placed left-right, 4 pins forward.  Pitch up is +.
-  	Location.roll = orientationEvent.orientation.y * M_PI / 180 + 0.035; //Roll - wide side placed left-right, 4 pins forward.  Right roll is +.
-  	
-	//Set yaw location from 0 to 2*PI to -PI to PI
-	//Yaw - wide side of BNO055 placed from left to right.  Going CW from top is +
-	if (orientationEvent.orientation.x * M_PI/180 > M_PI){
-		Location.yaw = orientationEvent.orientation.x * M_PI/180 - 2*M_PI;
-	}
-	else{
-		Location.yaw = orientationEvent.orientation.x * M_PI/180;
-	}
-*/
-
-/*
-  	if (abs(last_pitch-Location.pitch) > 5){ //If sensor messed up, use last measurement instead
-
-		Location.pitch = last_pitch;
-		Location.roll = last_roll;
-		Location.yaw = last_yaw;
-		Location.pitch_rate = last_pitch_rate;
-		Location.roll_rate = last_roll_rate;
-		Location.yaw_rate = last_yaw_rate;
-
-	}
-
-	if (abs(last_roll-Location.roll) > 5){ //If sensor messed up, use last measurement instead
-		Location.pitch = last_pitch;
-		Location.roll = last_roll;
-		Location.yaw = last_yaw;
-		Location.pitch_rate = last_pitch_rate;
-		Location.roll_rate = last_roll_rate;
-		Location.yaw_rate = last_yaw_rate;
-
-	}
-
-	if (abs(last_pitch_rate-Location.pitch_rate) > 10){ //If sensor messed up, use last measurement instead
-		Location.pitch = last_pitch;
-		Location.roll = last_roll;
-		Location.yaw = last_yaw;
-		Location.pitch_rate = last_pitch_rate;
-		Location.roll_rate = last_roll_rate;
-		Location.yaw_rate = last_yaw_rate;
-
-	}
-
-	if (abs(last_roll_rate-Location.roll_rate) > 10){ //If sensor messed up, use last measurement instead
-		Location.pitch = last_pitch;
-		Location.roll = last_roll;
-		Location.yaw = last_yaw;
-		Location.pitch_rate = last_pitch_rate;
-		Location.roll_rate = last_roll_rate;
-		Location.yaw_rate = last_yaw_rate;
-
-	}
-
-	*/
-
-  	//Different signs from euler orientations - values in degrees per second (even though Adafruit library documentation says rad/sec)
- 
- /* 	Location.pitch_rate = -ratesEvent.gyro.x * M_PI / 180;
-  	Location.roll_rate = -ratesEvent.gyro.y * M_PI / 180;
-  	Location.yaw_rate = -ratesEvent.gyro.z * M_PI / 180;
-  	*/
-
-/*
-
-  	  	//Location checks
-	Serial.println("RPY: ");
-
-  	Serial.print(Location.roll,3); Serial.print(" "); //Roll
-  	Serial.print(Location.pitch,3);  Serial.print(" "); //Pitch
-  	Serial.print(Location.yaw,3); Serial.println(" "); //Yaw
-
-  	Serial.print(Location.roll_rate,3); Serial.print(" "); //Roll
-  	Serial.print(Location.pitch_rate,3);  Serial.print(" "); //Pitch
-  	Serial.print(Location.yaw_rate,3); Serial.println(" "); //Yaw
-
-
-
-
-
-  	last_roll2 = last_roll;
-	last_pitch2 = last_pitch;
-	last_yaw2 = last_yaw;
-	last_roll_rate2 = last_roll_rate;
-	last_pitch_rate2 = last_pitch_rate;
-	last_yaw_rate2 = last_yaw_rate;
-	//last_time2 = last_time;
-
-	last_roll = Location.roll;
-	last_pitch = Location.pitch;
-	last_yaw = Location.yaw;
-	last_roll_rate = Location.roll_rate;
-	last_pitch_rate = Location.pitch_rate;
-	last_yaw_rate = Location.yaw_rate;
-	//last_time = meas_time;
-
-	*/
- /* 	
-  	imu::Vector<3> euler = bno.getVector(Adafruit_BNO055::VECTOR_EULER);
-  	imu::Vector<3> euler_rates = bno.getVector(Adafruit_BNO055::VECTOR_GYROSCOPE);
-
-  	Serial.print(euler.y()); Serial.print("  ");
-  	Serial.print(euler_rates.y()); Serial.print("  ");
-
-	Serial.println(micros());
-
-
-
-  	Serial.print(Location.pitch); Serial.print("  ");
-  	Serial.print(Location.pitch_rate); Serial.print("  ");
-
-	Serial.println(micros());
-
-
-  	Serial.print(Location.yaw); Serial.print("  ");
-  	Serial.print(Location.yaw_rate); Serial.print("  ");
-
-  	Serial.print(Location.pitch); Serial.print("  ");
-  	Serial.print(Location.pitch_rate); Serial.print("  ");
-
-  	Serial.print(Location.roll); Serial.print("  ");
-  	Serial.print(Location.roll_rate); Serial.print("  ");
-
-  	Serial.print(reset_count); Serial.print("  ");
-  	Serial.print(last_roll2); Serial.print("  ");
-	Serial.print(last_pitch2); Serial.print("  ");
-	Serial.print(last_yaw2); Serial.print("  ");
-  
-  	Serial.println(micros());
-
-*/
-  	/*
-  	Serial.println(" ");
-  	Serial.print("Loc dt: "); Serial.println(ending - starting);
-  	*/
 
 	}
 
