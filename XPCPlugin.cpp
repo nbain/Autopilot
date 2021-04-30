@@ -174,7 +174,7 @@ static float XPCFlightLoopCallback(float inElapsedSinceLastCall, float inElapsed
 //Get simulation time
 XPLMDataRef flight_time_dref = XPLMFindDataRef("sim/time/total_flight_time_sec"); //float y seconds Total time since the flight got reset by something
 XPLMDataRef total_time_dref = XPLMFindDataRef("sim/time/total_running_time_sec"); //float y seconds Total time the sim has been up
-
+		//Maybe try writing
 
 //For IMU with internal Kalman-filter (assuming always correct).  All in degrees.
 //sim/flightmodel2/position appears to be identical to sim/flightmodel/position for phi, theta, psi
@@ -450,11 +450,7 @@ PLUGIN_API int XPluginEnable(void)
 	}
 	XPC::Log::FormatLine(LOG_INFO, "EXEC", "Debug Logging Enabled (Verbosity: %i)", LOG_LEVEL);
 
-	
-	loop_time = 0.02;
-	
-	XPLMSetDatai(Override_framerate_Dref, 1); //Make framerate overridable.
-	XPLMSetDataf(framerate_dref,loop_time); //Set frame rate in seconds.
+
 	
 	float interval = -1; // Call every frame
 	void* refcon = NULL; // Don't pass anything to the callback directly
@@ -493,7 +489,7 @@ PLUGIN_API void XPluginReceiveMessage(XPLMPluginID inFromWho, int inMessage, voi
  
 	-Wait for throttle and servo angle sequence response
  
-	-Set throttles and servo angles
+	-Set fan forces and moments
 
  
 This function runs right before updating the graphics and displaying new outputs on the XPlane display
@@ -527,7 +523,7 @@ float XPCFlightLoopCallback(float inElapsedSinceLastCall,
 	//Get all data
 	
 	//Simulation time
-	float flight_time = XPLMGetDataf(flight_time_dref);
+	float flight_time = XPLMGetDataf(flight_time_dref); //Time since beginning of current flight, after most recent reset
 	float total_time = XPLMGetDataf(total_time_dref);
 	
 	//For IMU with internal Kalman-filter (assuming always correct).  All in degrees.
@@ -571,7 +567,6 @@ float XPCFlightLoopCallback(float inElapsedSinceLastCall,
 	//Temperature
 	float ambient_temp = XPLMGetDataf(ambient_temp_dref);
 
-	
 	
 	//Let XPlane load and settle for number of seconds (otherwise never loads)
 	if (flight_time < 3){
@@ -637,10 +632,11 @@ float XPCFlightLoopCallback(float inElapsedSinceLastCall,
 	};
 	
 	
-	XPC::Log::FormatLine(LOG_INFO, "EXEC", "Simulation flight time: %f", flight_time);
-	
+
 	UDP_Send(flightstateArray);
 	//XPC::Log::FormatLine(LOG_INFO, "EXEC", "UDP sent to control system");
+	
+	XPC::Log::FormatLine(LOG_INFO, "EXEC", "UDP sent to controller.  Simulation flight time: %f", flight_time);
 	
 	
 	
@@ -718,6 +714,9 @@ float XPCFlightLoopCallback(float inElapsedSinceLastCall,
 	//Allow propulsion forces and moments override - may need to overwrite both.  Only #1 causes XPlane to fight override every step.
 	XPLMSetDatai(engine_forces_and_moments_override_dref,1);
 	XPLMSetDatai(engine_forces_and_moments_override2_dref,1);
+	
+	XPLMSetDataf(total_time_dref,0); //Override 15 min limit
+	
 	
 	//Max moments should be ~10 Nm.  0.01 Nm accuracy dividing by 100.
 	float propulsion_roll_moment = control_input_float[0] / 100;
