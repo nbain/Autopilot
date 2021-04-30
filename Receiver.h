@@ -85,6 +85,8 @@ class Receiver //used to be receiverModule
 		int serial_port_read;
 		struct termios options;
 
+		std::string LOG_PATH;
+
 		// Receiver data conists of 7 floats, each 5 bytes long (+/- 0.00) and separated by a comma
 		static const int numBytes = 42;
 		char startMarker = '<';
@@ -111,7 +113,7 @@ class Receiver //used to be receiverModule
 		RECEIVER Current_Receiver_Values;
 
 
-		void init();
+		void init(std::string file_path);
 		void read_intent();
 		void Log();
 		float clip(float input, float lower_bound, float upper_bound);

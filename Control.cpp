@@ -980,6 +980,8 @@ Control::POWERTRAIN_MODEL_OUTPUT Control::run_powertrain_model(int fan_number, f
 void Control::calculate_motor_operating_limits(int fan_number)
 	{
 
+	
+
 		float current_rot_vel = propulsion_units[fan_number].rotational_velocity;
 		float torque_constant = propulsion_units[fan_number].motor.torque_constant;
 		float effective_impedance = propulsion_units[fan_number].motor.effective_impedance;
@@ -2330,6 +2332,10 @@ void Control::motor_rot_vel_delta_to_pwm(int fan_number)
 		//Pulse width output
 		propulsion_units[fan_number].PWM_micros = PWM_micros_guess;
 
+		if(Current_Receiver_Values_ptr->thrust < 0.1){
+			propulsion_units[fan_number].PWM_micros = 1000;
+}
+
 
 /*
 		printf("\n Fan num: %i   ", fan_number);
@@ -2490,11 +2496,13 @@ void Control::send_pwms()
 	LOG.open("testlog.txt", std::ios::out | std::ios::app);
 	LOG << "Motor PWMs: ";
 
+	printf("Motor PWMs: ");
+
 	auto start_pwm = std::chrono::steady_clock::now();
 	//Send motor PWMs to GPIOs
 	for (int i=0; i<8; i++)
     	{
-
+		printf(" %8.0f ", propulsion_units[i].PWM_micros);
     		//Send pulse to GPIO pin
 			//send_microseconds(propulsion_units[i].gpio_pin, propulsion_units[i].PWM_micros);
 			float PCA9685_PWM_period_micros = 1000000 / PCA9685_FREQ;

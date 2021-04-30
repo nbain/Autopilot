@@ -43,12 +43,13 @@ Braswell chip has ~1,100 pins.  7 I2C channels (14 pins).
 XPlane XPlane_for_Location;
 
 
-void Location::init()
+void Location::init(std::string file_path)
 	{
 
 
 		std::cout << "Starting IMU" << std::endl;
 		setup_port();
+		LOG_PATH = file_path;
 
 		//XPlane_for_Location.UDP_Setup_Recv();
 
@@ -66,6 +67,8 @@ void Location::readData() {
 		memset(&incomingByte, '\0', sizeof(incomingByte)); // clear the buffer holding the incoming byte
 		int n = read(serial_port_read, &incomingByte, sizeof(incomingByte)); // read a single byte
 		count=count+1;
+
+		//std::cout << "incomingByte: " << incomingByte << std::endl;
 		
 		// error checks, we should log these to the SD card eventually
 		if(n < 0) {
@@ -78,6 +81,8 @@ void Location::readData() {
 			if (incomingByte[0] == loc_startMarker) {
 				int n2 = read(serial_port_read, &location_msg, sizeof(location_msg));
 				//std::cout << count << " calls to read()\t";
+
+			//std::cout << "location_msg: " << location_msg << std::endl;
 				
 				// Convert the character array to a float array
 				convertMessage();
@@ -119,48 +124,9 @@ void Location::setup_port() {
 		printf("Error %i from tcgetattr: %s\n", errno, strerror(errno));
 	}
 
-	/*options.c_cflag &= ~PARENB; // Clear parity bit, disabling parity (most common)
-	options.c_cflag &= ~CSTOPB; // Clear stop field, only one stop bit used in communication (most common)
-	options.c_cflag &= ~CSIZE; // Clear all bits that set the data size 
-	options.c_cflag |= CS8; // 8 bits per byte (most common)
-	options.c_cflag &= ~CRTSCTS; // Disable RTS/CTS hardware flow control (most common)
-	options.c_cflag |= CREAD | CLOCAL; // Turn on READ & ignore ctrl lines (CLOCAL = 1)
-
-	options.c_lflag &= ~ICANON; // Disable canonical mode
-	options.c_lflag &= ~IEXTEN; // Disable extended functions
-	options.c_lflag &= ~ECHO; // Disable echo
-	options.c_lflag &= ~ECHOE; // Disable erasure
-	options.c_lflag &= ~ECHONL; // Disable new-line echo
-	options.c_lflag &= ~ISIG; // Disable interpretation of INTR, QUIT and SUSP
-	options.c_iflag &= ~(IXON | IXOFF | IXANY); // Turn off s/w flow ctrl
-	options.c_iflag &= ~(IGNBRK|BRKINT|PARMRK|ISTRIP|INLCR|IGNCR|ICRNL|INPCK); // Disable any special handling of received bytes
-
-	options.c_oflag &= ~OPOST; // Prevent special interpretation of output bytes (e.g. newline chars)
-	options.c_oflag &= ~ONLCR; // Prevent conversion of newline to carriage return/line feed
-
-	//.c_lflag |= ICANON; // run in canonical mode (receive data line by line)
-	//options.c_cflag &= ~CRTSCTS; // disable hardware flow control
-
-	struct serial_struct serial;
-	ioctl(serial_port_read, TIOCGSERIAL, &serial);
-	serial.flags |= ASYNC_LOW_LATENCY;
-	ioctl(serial_port_read, TIOCGSERIAL, &serial);
-	
-	//options.c_lflag &= ~(ICANON | ECHO | ECHOE | ECHONL | ISIG | IEXTEN);
-
-	options.c_cc[VTIME] = 0; // no timeout
-	options.c_cc[VMIN] = numBytes; // always wait for expected number of bytes*/
-
 	options.c_lflag |= ICANON;
 	options.c_cflag &= ~CRTSCTS;
 
-	/*options.c_cflag |= (CS8 | CREAD | CLOCAL); // 8 bits per byte
-	options.c_cflag &= ~PARENB;
-	options.c_cflag &= ~CSTOPB;
-
-	options.c_oflag &= ~(OPOST | ONLCR);
-	options.c_iflag &= ~(IXON | IXOFF | IXANY);
-	options.c_iflag &= ~(IGNBRK | BRKINT | PARMRK | ISTRIP | INLCR | IGNCR | ICRNL);*/
 	cfsetispeed(&options, B460800);
 	cfsetospeed(&options, B460800);
 
@@ -176,16 +142,35 @@ void Location::setup_port() {
 
 void Location::estimate()
 	{
+
+
 	readData(); // Get location data over Serial from Arduino
-	Current_Location.roll = location_vals[0];
-	Current_Location.pitch = location_vals[1];
-	Current_Location.heading = location_vals[2];
-	Current_Location.roll_rate = location_vals[3];
-	Current_Location.pitch_rate = location_vals[4];
-	Current_Location.heading_rate = location_vals[5];
+	Current_Location.roll = (location_vals[0] + 2.1) * M_PI/180;
+	Current_Location.pitch = (location_vals[1] - 2.5) * M_PI/180;
+	Current_Location.heading = (location_vals[2]) * M_PI/180;
+	Current_Location.roll_rate = -(location_vals[3]) * M_PI/180;
+	Current_Location.pitch_rate = -(location_vals[4]) * M_PI/180;
+	Current_Location.heading_rate = -(location_vals[5]) * M_PI/180;
+
+		//For testing without IMU connected
+	/*
+	Current_Location.pitch = 0.1;
+	Current_Location.roll = -0.1;
+	Current_Location.heading = -0.1;
+	Current_Location.pitch_rate = 0;
+	Current_Location.roll_rate = 0;
+	Current_Location.heading_rate = 0;
+	*/
+
+	Current_Location.air_density = 1.0;
+	Current_Location.air_density_fraction = 0.8;
+	Current_Location.longitudinal_Q = 0.0001;
+	Current_Location.longitudinal_true_airspeed = 0;
+	Current_Location.vertical_speed = 0;
+	Current_Location.AOA = 0;
 
 	std::ofstream LOG;
-	LOG.open("testlog.txt", std::ios::out | std::ios::app);	
+	LOG.open(LOG_PATH, std::ios::out | std::ios::app);	
 	LOG << "Location RPY: ";
 	LOG << Current_Location.roll << ", ";
 	LOG << Current_Location.pitch << ", ";
@@ -195,20 +180,13 @@ void Location::estimate()
 	LOG << Current_Location.heading_rate << "\n\n";
 	LOG.close();
 
-	Current_Location.air_density = 1.2;
-	Current_Location.air_density_fraction = 1;
-	Current_Location.longitudinal_Q = 0.0001;
-	Current_Location.longitudinal_true_airspeed = 0;
-	Current_Location.vertical_speed = 0;
-	Current_Location.AOA = 0;
-
-	/*std::cout << "RPY: ";
+	std::cout << "\nRPY, RPY rates: ";
 	printf("%8.3f", Current_Location.roll);
 	printf("%8.3f", Current_Location.pitch);
 	printf("%8.3f", Current_Location.heading);
 	printf("%8.3f", Current_Location.roll_rate);
 	printf("%8.3f", Current_Location.pitch_rate);
-	printf("%8.3f\t", Current_Location.heading_rate);*/
+	printf("%8.3f\t", Current_Location.heading_rate);
 
 	/*auto start = std::chrono::steady_clock::now();
 
@@ -289,15 +267,7 @@ void Location::estimate()
 //*/
  
 
-	//For testing without IMU connected
-	/*
-	Current_Location.pitch = 0.1;
-	Current_Location.roll = -0.1;
-	Current_Location.heading = -0.1;
-	Current_Location.pitch_rate = 0;
-	Current_Location.roll_rate = 0;
-	Current_Location.heading_rate = 0;
-	//*/
+
 /*
 	printf("time: %f  ", Current_Location.time);
 

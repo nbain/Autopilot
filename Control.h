@@ -52,6 +52,8 @@ class Control
 
 		bool verbose = false;
 
+		std::string LOG_PATH;
+
 		int i2cHandle;
 		int PCA9685_I2C_address = 0x40;
 		uint16_t PRESCALE_VAL = 13; //hz
