@@ -375,17 +375,56 @@ void Control::set_motor_and_servo_parameters()
 	APC_8_45MR.fan_aero_torque_coefficient = 3370; //Fit to APC data (sea-level)
 	APC_8_45MR.fan_assembly_moment_of_inertia = 0.000034;
 
+	//Back right
+	Turnigy_1400kv_2.effective_impedance = 0.75;
+	Turnigy_1400kv_2.torque_constant = 0.03143;
+	Turnigy_1400kv_2.coil_resistance = 0.083;
+	Turnigy_1400kv_2.motor_kv = 1400;
 
-	Turnigy_1400kv.effective_impedance = 0.7;
-	Turnigy_1400kv.torque_constant = 0.03143;
-	Turnigy_1400kv.coil_resistance = 0.083;
-	Turnigy_1400kv.motor_kv = 1400;
+	//Back mid right
+	Turnigy_1400kv_8.effective_impedance = 0.75;
+	Turnigy_1400kv_8.torque_constant = 0.03143;
+	Turnigy_1400kv_8.coil_resistance = 0.083;
+	Turnigy_1400kv_8.motor_kv = 1400;
+
+	//Back left
+	Turnigy_1400kv_10.effective_impedance = 0.7;
+	Turnigy_1400kv_10.torque_constant = 0.03143;
+	Turnigy_1400kv_10.coil_resistance = 0.083;
+	Turnigy_1400kv_10.motor_kv = 1400;
+
+	//Back mid left
+	Turnigy_1400kv_6.effective_impedance = 0.67;
+	Turnigy_1400kv_6.torque_constant = 0.03143;
+	Turnigy_1400kv_6.coil_resistance = 0.083;
+	Turnigy_1400kv_6.motor_kv = 1400;
 
 
-	Turnigy_1500kv.effective_impedance = 0.44;
-	Turnigy_1500kv.torque_constant = 0.045;
-	Turnigy_1500kv.coil_resistance = 0.0485; //44.9-45.1 mOhms at 20 deg C
-	Turnigy_1500kv.motor_kv = 1500;
+
+	//Front right
+	Turnigy_1500kv_1.effective_impedance = 0.44;
+	Turnigy_1500kv_1.torque_constant = 0.045;
+	Turnigy_1500kv_1.coil_resistance = 0.0485; //44.9-45.1 mOhms at 20 deg C
+	Turnigy_1500kv_1.motor_kv = 1500;
+
+	//Front left
+	Turnigy_1500kv_2.effective_impedance = 0.46;
+	Turnigy_1500kv_2.torque_constant = 0.045;
+	Turnigy_1500kv_2.coil_resistance = 0.0485; //44.9-45.1 mOhms at 20 deg C
+	Turnigy_1500kv_2.motor_kv = 1500;
+
+	//Back right
+	Turnigy_1500kv_3.effective_impedance = 0.5;
+	Turnigy_1500kv_3.torque_constant = 0.045;
+	Turnigy_1500kv_3.coil_resistance = 0.0485; //44.9-45.1 mOhms at 20 deg C
+	Turnigy_1500kv_3.motor_kv = 1500;
+
+	//Back left
+	Turnigy_1500kv_4.effective_impedance = 0.44;
+	Turnigy_1500kv_4.torque_constant = 0.045;
+	Turnigy_1500kv_4.coil_resistance = 0.0485; //44.9-45.1 mOhms at 20 deg C
+	Turnigy_1500kv_4.motor_kv = 1500;
+
 
 
 	BLHeli_35A.motor_controller_input_exponent = 2.35;
@@ -426,14 +465,14 @@ void Control::set_motor_and_servo_parameters()
 
 
 	//Motor hardware for all propulsion units
-	fr_fan.motor = Turnigy_1500kv;
-	fl_fan.motor = Turnigy_1500kv;
-	br_fan.motor = Turnigy_1400kv;
-	bl_fan.motor = Turnigy_1400kv;
-	bmr_fan.motor = Turnigy_1400kv;
-	bml_fan.motor = Turnigy_1400kv;
-	bfr_fan.motor = Turnigy_1500kv;
-	bfl_fan.motor = Turnigy_1500kv;
+	fr_fan.motor = Turnigy_1500kv_1;
+	fl_fan.motor = Turnigy_1500kv_2;
+	br_fan.motor = Turnigy_1400kv_2;
+	bl_fan.motor = Turnigy_1400kv_10;
+	bmr_fan.motor = Turnigy_1400kv_8;
+	bml_fan.motor = Turnigy_1400kv_6;
+	bfr_fan.motor = Turnigy_1500kv_3;
+	bfl_fan.motor = Turnigy_1500kv_4;
 
 
 	//Motor controller for all propulsion units
@@ -940,6 +979,8 @@ Control::POWERTRAIN_MODEL_OUTPUT Control::run_powertrain_model(int fan_number, f
 */
 void Control::calculate_motor_operating_limits(int fan_number)
 	{
+
+	
 
 		float current_rot_vel = propulsion_units[fan_number].rotational_velocity;
 		float torque_constant = propulsion_units[fan_number].motor.torque_constant;
@@ -2291,6 +2332,10 @@ void Control::motor_rot_vel_delta_to_pwm(int fan_number)
 		//Pulse width output
 		propulsion_units[fan_number].PWM_micros = PWM_micros_guess;
 
+		if(Current_Receiver_Values_ptr->thrust < 0.1){
+			propulsion_units[fan_number].PWM_micros = 1000;
+}
+
 
 /*
 		printf("\n Fan num: %i   ", fan_number);
@@ -2307,118 +2352,6 @@ void Control::motor_rot_vel_delta_to_pwm(int fan_number)
 
 
 
-
-
-
-
-
-
-/*
-	Input: 
-	Output: 
-
-	Essential model should illustrate that:
-		-Steady state current sent by controller seems to be Max Current * (PWM fraction) ^ 2.35
-		-Motor controller seems to be a PI loop commanding a torque from:
-			-Error between actual rotational velocity and rotational velocity associated with commanded PWM
-			-Matching transients by simulating in Octave, may be approximately:
-				Torque sent (Nm) = 0.0004 * [rotational velocity error in rad/sec] + 0.0015 * [rotational velocity error integral wrt time in seconds]
-					If Torque sent > max allowable:
-						-Send max allowable in correct direction
-						-Don't increase error integral
-
-*/
-void Control::motor_torque_to_pwm(int fan_number)
-	{
-
-
-
-		/*
-		Step 1:
-		Find steady state rotational velocity required to command to produce desired torque
-
-		*/
-
-		//Motor torque required (Nm)
-		float required_torque = propulsion_units[fan_number].motor_torque_required;
-
-		//Get current fan rotational velocity
-		float current_rot_vel = propulsion_units[fan_number].rotational_velocity;
-
-		
-		//Calculate motor parameters to determine max motor torque at given rotational velocity
-		float zero_speed_max_current = batt_voltage / propulsion_units[fan_number].motor.coil_resistance;
-		float zero_speed_torque = propulsion_units[fan_number].motor.torque_constant * zero_speed_max_current;
-
-		float motor_kv_rad_per_sec = propulsion_units[fan_number].motor.motor_kv / 9.5492966;
-		float theoretical_zero_torque_rot_vel = batt_voltage * motor_kv_rad_per_sec;
-
-		//Calculate max torque theoretically possible at current rotational velocity (may not be possible to reach because of controller PI loop)
-		float max_theoretical_input_torque = zero_speed_torque * (1 - current_rot_vel / theoretical_zero_torque_rot_vel);
-
-
-		//Make readable variables for motor controller torque model
-		float P_gain = propulsion_units[fan_number].motor_controller.P_gain;
-		float I_gain = propulsion_units[fan_number].motor_controller.I_gain;
-		float rot_vel_error_integral = propulsion_units[fan_number].rot_vel_error_integral;
-
-		/*
-		Rotational velocity error required to generate given torque derived from motor's PI control of torque:
-		Torque = P_gain * rot_vel_error + I_gain * rot_vel_error_integral
-		*/
-		float required_rot_vel_error = (required_torque - I_gain * rot_vel_error_integral) / (P_gain + loop_time * I_gain);
-
-
-		//Rotational velocity error for timestep should be error found to generate required torque
-		float rot_vel_error = required_rot_vel_error;
-		rot_vel_error_integral = rot_vel_error_integral + rot_vel_error * loop_time;
-
-
-		//Steady state rotational velocity command required to generate desired torque
-		float steady_state_rot_vel_required = current_rot_vel + required_rot_vel_error;
-
-
-
-		/*
-		Step 2:
-		Find what PWM would result in the target steady state rotational velocity
-
-		*/
-
-		//Readable min and max motor controller PWM
-		float min_pwm = propulsion_units[fan_number].motor_controller.min_pwm;
-		float max_pwm = propulsion_units[fan_number].motor_controller.max_pwm;
-		float fan_torque_coeff = propulsion_units[fan_number].fan.fan_aero_torque_coefficient;
-
-		float max_rot_vel_efficiency = propulsion_units[fan_number].max_rot_vel_efficiency;
-		float max_rot_vel_input_power = propulsion_units[fan_number].max_rot_vel_input_power;
-
-
-		float steady_state_torque = get_fan_aero_torque(fan_number, steady_state_rot_vel_required);
-		float steady_state_output_power = steady_state_rot_vel_required * steady_state_torque;
-
-
-		//Efficiency assumed constant across thrust input level.
-		//Seems to be the case by experiment and both input and output power should increase with rot_vel ^ 3
-		float steady_state_input_power = steady_state_output_power / max_rot_vel_efficiency;
-
-		float steady_state_target_max_power_fraction = steady_state_input_power / max_rot_vel_input_power;
-
-		//Input pulse fraction = Max power fraction ^ 1/2.35
-		float inverse_input_exponent = 1 / propulsion_units[fan_number].motor_controller.motor_controller_input_exponent;
-		float steady_state_target_input_fraction = std::pow(steady_state_target_max_power_fraction, inverse_input_exponent);
-
-
-		float PWM_micros = min_pwm + steady_state_target_input_fraction * (max_pwm - min_pwm);
-
-
-		//Pulse width output
-		propulsion_units[fan_number].PWM_micros = PWM_micros;
-
-
-		propulsion_units[fan_number].PWM_micros = 1600;
-
-	}
 
 
 
@@ -2563,11 +2496,13 @@ void Control::send_pwms()
 	LOG.open("testlog.txt", std::ios::out | std::ios::app);
 	LOG << "Motor PWMs: ";
 
+	printf("Motor PWMs: ");
+
 	auto start_pwm = std::chrono::steady_clock::now();
 	//Send motor PWMs to GPIOs
 	for (int i=0; i<8; i++)
     	{
-
+		printf(" %8.0f ", propulsion_units[i].PWM_micros);
     		//Send pulse to GPIO pin
 			//send_microseconds(propulsion_units[i].gpio_pin, propulsion_units[i].PWM_micros);
 			float PCA9685_PWM_period_micros = 1000000 / PCA9685_FREQ;

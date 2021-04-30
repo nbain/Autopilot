@@ -52,6 +52,8 @@ class Control
 
 		bool verbose = false;
 
+		std::string LOG_PATH;
+
 		int i2cHandle;
 		int PCA9685_I2C_address = 0x40;
 		uint16_t PRESCALE_VAL = 13; //hz
@@ -142,8 +144,15 @@ class Control
 
 		} ;
 
-		MOTOR Turnigy_1400kv;
-		MOTOR Turnigy_1500kv;
+		MOTOR Turnigy_1400kv_2; //Back right
+		MOTOR Turnigy_1400kv_8; //Back mid right
+		MOTOR Turnigy_1400kv_10; //Back left
+		MOTOR Turnigy_1400kv_6; //Back mid left
+
+		MOTOR Turnigy_1500kv_1; //Front right
+		MOTOR Turnigy_1500kv_2; //Front left
+		MOTOR Turnigy_1500kv_3; //Back far right
+		MOTOR Turnigy_1500kv_4; //Back far left
 
 
 

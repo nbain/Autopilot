@@ -61,13 +61,14 @@ static void ch5_PWM();
 static void ch6_PWM();
 */
 
-void Receiver::init()
+void Receiver::init(std::string file_path)
 	{
 
 		std::cout << "Initializing receiver" << std::endl;
 		setup_port();
 		std::cout << "Finished setting up serial port...\n";
 
+		LOG_PATH = file_path;
 		/*
 		pinMode(RECV_CHAN0PIN, INPUT);
   		pinMode(RECV_CHAN1PIN, INPUT);
@@ -206,6 +207,8 @@ void Receiver::read_intent()
 		
 		//std::cout << "Reading receiver" << std::endl;
 
+
+
 		readData(); // Get receiver data over Serial from Arduino
 
 	  	Current_Receiver_Values.thrust = clip(recv_values[0], 0, 1);
@@ -217,7 +220,7 @@ void Receiver::read_intent()
 		Current_Receiver_Values.dial1 = clip(recv_values[6], -1, 1);
 
 		std::ofstream LOG;
-		LOG.open("testlog.txt", std::ios::out | std::ios::app);	
+		LOG.open(LOG_PATH, std::ios::out | std::ios::app);	
 		LOG << "Receiver TPRYAAD: ";
 		LOG << Current_Receiver_Values.thrust << ", ";
 		LOG << Current_Receiver_Values.pitch << ", ";
@@ -227,14 +230,14 @@ void Receiver::read_intent()
 		LOG << Current_Receiver_Values.aux2 << ", ";
 		LOG << Current_Receiver_Values.dial1 << "\n\n";
 
-		/*std::cout << "\tTPRYAAD: ";
+		std::cout << "TPRYAAD: ";
 		printf("%5.2f", Current_Receiver_Values.thrust);
 		printf("%5.2f", Current_Receiver_Values.pitch);
 		printf("%5.2f", Current_Receiver_Values.roll);
 		printf("%5.2f", Current_Receiver_Values.yaw);
 		printf("%5.2f", Current_Receiver_Values.aux1);
 		printf("%5.2f", Current_Receiver_Values.aux2);
-		printf("%5.2f", Current_Receiver_Values.dial1);*/
+		printf("%5.2f", Current_Receiver_Values.dial1);
 
 	  	//recv_floats_array.clear(); // clear vector containing the data from Arduino
 

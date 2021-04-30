@@ -72,25 +72,6 @@ https://stackoverflow.com/questions/13263277/difference-between-stdsystem-clock-
 
 using namespace std::chrono;
 
-/*std::string getCurrentTimestamp()
-{
-	//using std::chrono::system_clock;
-	auto currentTime = std::chrono::system_clock::now();
-	char buffer[80];
-
-	auto transformed = currentTime.time_since_epoch().count() / 1000000;
-
-	auto millis = transformed % 1000;
-
-	std::time_t tt;
-	tt = system_clock::to_time_t ( currentTime );
-	auto timeinfo = localtime (&tt);
-	strftime (buffer,80,"%F %H:%M:%S",timeinfo);
-	sprintf(buffer, "%s:%03d",buffer,(int)millis);
-
-	return std::string(buffer);
-}*/
-
 int main()
 {
 
@@ -100,16 +81,21 @@ int main()
 
 
 	_Control.set_motor_and_servo_parameters();
-	std::ofstream LOG;
-	LOG.open("testlog.txt", std::ios::out | std::ios::app);
 
 	auto PROGRAM_START = steady_clock::now();
 	std::time_t timestamp = system_clock::to_time_t(system_clock::now());
-	LOG << std::ctime(&timestamp) << "\n";
+	std::string file_name = "LOGS/";
+	file_name += std::ctime(&timestamp);
+	file_name += ".txt";
+
+	std::ofstream LOG;
+	LOG.open(file_name, std::ios::out | std::ios::app);
+	LOG << "START" << "\n";
 	LOG.close();
 
-	_Location.init();
-	_Receiver.init();
+	_Location.init(file_name);
+	_Receiver.init(file_name);
+	_Control.LOG_PATH = file_name;
 	//_Control.setup_port();
 	_Control.init_PCA9685();
 
@@ -139,7 +125,7 @@ int main()
 		std::cout << "Loop time (us): " << duration << std::endl;
 
 		std::ofstream LOG;
-		LOG.open("testlog.txt", std::ios::out | std::ios::app);
+		LOG.open(file_name, std::ios::out | std::ios::app);
 		LOG << "Loop time (us): " << duration << "\n";
 		auto elapsed = duration_cast<microseconds>(end-PROGRAM_START).count();
 		LOG << "Elapsed time since program start: " << (float) elapsed/1000000 << "\n";
