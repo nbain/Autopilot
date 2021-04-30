@@ -142,8 +142,15 @@ class Control
 
 		} ;
 
-		MOTOR Turnigy_1400kv;
-		MOTOR Turnigy_1500kv;
+		MOTOR Turnigy_1400kv_2; //Back right
+		MOTOR Turnigy_1400kv_8; //Back mid right
+		MOTOR Turnigy_1400kv_10; //Back left
+		MOTOR Turnigy_1400kv_6; //Back mid left
+
+		MOTOR Turnigy_1500kv_1; //Front right
+		MOTOR Turnigy_1500kv_2; //Front left
+		MOTOR Turnigy_1500kv_3; //Back far right
+		MOTOR Turnigy_1500kv_4; //Back far left
 
 
 
