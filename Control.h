@@ -5,7 +5,7 @@
 
 //#include <Arduino.h>
 
-
+#include <iomanip>
 #include <iostream>
 #include <algorithm> //For max()
 #include <cstdio>
@@ -50,7 +50,7 @@ class Control
 		Wing pitching/hover control loss
 		*/
 
-		bool verbose = false;
+		bool verbose = true;
 
 		std::string LOG_PATH;
 
@@ -81,7 +81,7 @@ class Control
 
 
 		float vehicle_mass = 4; //Vehicle mass in kg.
-		float roll_moment_of_inertia = 0.295; //Roll moment of inertia in kg*m^2
+		float roll_moment_of_inertia = 0.22; //Roll moment of inertia in kg*m^2 (0.295)
 		float pitch_moment_of_inertia = 0.872; //Pitch moment of inertia in kg*m^2
 		float yaw_moment_of_inertia = 1.165; //Yaw moment of inertia in kg*m^2
 
@@ -532,6 +532,8 @@ class Control
 		void servo_angle_delta_to_acc_required(int servo_num);
 		void servo_acc_required_to_pwm(int servo_num);
 
+		float integrate_acceleration_rates(float pos_0, float vel_0, float acc_0, float acc_rate1, float acc_rate1_time, float acc_rate2, float acc_rate2_time, float acc_rate3, float acc_rate3_time);
+		float estimate_position_after_acceleration_rate_control(float pos_0, float vel_0, float acc_0, float acc_max, float j_max);
 
 		//void acceleration_controller(Location::LOCATION *, Receiver::RECEIVER *);
 		Eigen::MatrixXf acceleration_controller();
@@ -565,6 +567,8 @@ class Control
 
 		//void print_mtxf(const Eigen::MatrixXf& K);
 
+	
+
 		float Pitch_Rate_P; //How much to accelerate towards target rate.  More than about 0.03 on Deathtrap and starts to shake.
 		float Roll_Rate_P; //0.1, with sqrt p = 6, -> 1.8 for 10 deg with no rate (3 and 1 for 10 deg, no rate PID pitch, roll)
 		float Yaw_Rate_P;
@@ -574,7 +578,7 @@ class Control
 
 
 
-//		void run2(Location::LOCATION *, Receiver::RECEIVER *);
+		void run2(Location::LOCATION *, Receiver::RECEIVER *);
 //		void Log();
 //		void MotorTest2(Receiver::RECEIVER *);
 

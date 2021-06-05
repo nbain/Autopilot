@@ -1,6 +1,45 @@
 #include "Control.h"
 //#include <math.h> //For sqrt() control
 
+float dt;
+float l_time = 0;
+float desired_yaw = 0;
+float yaw_trim = 0;
+float master_tilt = 0; //So master_tilt used to be -Receiver->pitch * 90 with no slew limiter 
+float desired_tilt = 0;
+float max_tilt_rate;
+
+float roll_rate_error_3 = 0;
+float roll_rate_error_2 = 0;
+float roll_rate_error_1 = 0;
+
+float pitch_rate_error_3 = 0;
+float pitch_rate_error_2 = 0;
+float pitch_rate_error_1 = 0;
+
+float yaw_rate_error_3 = 0;
+float yaw_rate_error_2 = 0;
+float yaw_rate_error_1 = 0;
+
+float roll_rate_3 = 0;
+float roll_rate_2 = 0;
+float roll_rate_1 = 0;
+
+float pitch_rate_3 = 0;
+float pitch_rate_2 = 0;
+float pitch_rate_1 = 0;
+
+float yaw_rate_3 = 0;
+float yaw_rate_2 = 0;
+float yaw_rate_1 = 0;
+
+float pitch_rate_error_int = 0;
+float roll_rate_error_int = 0;
+
+float front_right_servo_angle;
+float front_left_servo_angle;
+float back_right_servo_angle;
+float back_left_servo_angle;
 
 
 /*
@@ -560,8 +599,8 @@ void Control::set_motor_and_servo_parameters()
 
 	front_right_servo.zero_deg_pwm = 850;
 	front_left_servo.zero_deg_pwm = 810;
-	back_right_servo.zero_deg_pwm = 850;
-	back_left_servo.zero_deg_pwm = 950;
+	back_right_servo.zero_deg_pwm = 1140;
+	back_left_servo.zero_deg_pwm = 1000;
 
 	front_right_servo.ninety_deg_pwm = 1830;	
 	front_left_servo.ninety_deg_pwm = 1860;
@@ -672,6 +711,8 @@ float Control::get_fan_thrust(int fan_number, float rotational_velocity)
 
 		float total_fan_thrust = (zero_inflow_fan_thrust + inflow_thrust_delta) * Current_Location_ptr->air_density_fraction;
 
+		//std::cout << "total_fan_thrust: " << total_fan_thrust << std::endl;
+
 		//std::cout << "rot velocity: " << rotational_velocity << std::endl;
 
 		return total_fan_thrust;
@@ -733,6 +774,8 @@ void Control::get_end_of_loop_rot_vels_and_servo_angles()
 			end_of_loop_thrusts_and_angles_tmp(i,0) = propulsion_units[i].fan_thrust;
 
 
+			//std::cout << "propulsion_units[i].rotational_velocity: " << propulsion_units[i].rotational_velocity << std::endl;
+			//std::cout << "propulsion_units[i].fan_thrust: " << propulsion_units[i].fan_thrust << std::endl;
 /*
 
 			std::cout << "Ran Powertrain model" << std::endl;
@@ -1257,6 +1300,439 @@ Control::SERVO_MODEL_OUTPUT Control::run_servo_model(int servo_num, float PWM_mi
 
 
 
+/*
+
+	Inputs:
+	Output: Resulting position from a series of acceleration rates
+
+  Find the position that would be reached by applying a given sequence of acceleration rates from an initial position, velocity, and acceleration
+  After finding the acceleration rate times and magnitudes that would result in zero acceleration and velocity, use function to check resulting position
+
+*/
+float Control::integrate_acceleration_rates(float pos_0, float vel_0, float acc_0, float acc_rate1, float acc_rate1_time, float acc_rate2, float acc_rate2_time, float acc_rate3, float acc_rate3_time)
+	{
+
+		float acc_1 = acc_0 + acc_rate1 * acc_rate1_time; //Acceleration after jerk at acc_rate1
+		float vel_1 = vel_0 + acc_0 * acc_rate1_time + 0.5 * acc_rate1 * std::pow(acc_rate1_time, 2); //Velocity after jerk at acc_rate1
+		float pos_1 = pos_0 + vel_0 * acc_rate1_time + 0.5 * acc_0 * std::pow(acc_rate1_time, 2) + (1.0/6.0) * acc_rate1 * std::pow(acc_rate1_time, 3); //Position after jerk at acc_rate1
+
+		float acc_2 = acc_1 + acc_rate2 * acc_rate2_time; //Acceleration after jerk at acc_rate2
+		float vel_2 = vel_1 + acc_1 * acc_rate2_time + 0.5 * acc_rate2 * std::pow(acc_rate2_time, 2); //Velocity after jerk at acc_rate2
+		float pos_2 = pos_1 + vel_1 * acc_rate2_time + 0.5 * acc_1 * std::pow(acc_rate2_time, 2) + (1.0/6.0) * acc_rate2 * std::pow(acc_rate2_time, 3); //Position after jerk at acc_rate2
+
+		float acc_3 = acc_2 + acc_rate3 * acc_rate3_time; //Acceleration after jerk at acc_rate3
+		float vel_3 = vel_2 + acc_2 * acc_rate3_time + 0.5 * acc_rate3 * std::pow(acc_rate3_time, 2); //Velocity after jerk at acc_rate3
+		float pos_3 = pos_2 + vel_2 * acc_rate3_time + 0.5 * acc_2 * std::pow(acc_rate3_time, 2) + (1.0/6.0) * acc_rate3 * std::pow(acc_rate3_time, 3); //Position after jerk at acc_rate3
+
+		return pos_3;
+
+	}
+
+
+/*
+
+	Inputs:
+	Output: Resulting position from a series of acceleration rates
+
+  Find the position that would be reached by applying a given sequence of acceleration rates from an initial position, velocity, and acceleration
+  After finding the acceleration rate times and magnitudes that would result in zero acceleration and velocity, use function to check resulting position
+
+*/
+float Control::estimate_position_after_acceleration_rate_control(float pos_0, float vel_0, float acc_0, float acc_max, float j_max)
+	{
+
+		float resulting_position;
+
+  		float accel_ramp_time = std::abs(acc_0) / j_max; //Fastest time to acc = 0 in seconds
+  		float accel_ramp_rate = std::copysignf(1.0, -acc_0)*j_max; //Ramp rate to zero acceleration (positive or negative j_max)
+  		float accel_ramp_final_vel = vel_0 + acc_0*accel_ramp_time + 0.5*accel_ramp_rate*std::pow(accel_ramp_time,2); //Final velocity if were to ramp to zero acc as fast as possible
+  		float accel_ramp_final_pos = pos_0 + vel_0*accel_ramp_time + 0.5*acc_0*std::pow(accel_ramp_time,2) + (1.0/6.0)*accel_ramp_rate*std::pow(accel_ramp_time,3);
+		
+		/*
+	  Apply acceleration rate opposite the final acceleration goal at the beginning when:
+	  1. Acceleration delta is positive && Acceleration going directly to zero results in a too-positive final velocity
+	  		-> negative acceleration rate at beginning
+	  2. Acceleration delta is negative && Acceleration going directly to zero results in a too-negative final velocity
+	  		-> positive acceleration rate at beginning
+	  
+	  
+	  Continue acceleration rate after passing zero acceleration (and then going back to zero) when:
+	  3. Acceleration delta is positive && Acceleration going directly to zero results in too-negative final velocity (final velocity delta is positive)
+	     	-> continue positive acceleration rate past 0
+	  4. Acceleration delta is negative && Acceleration going directly to zero results in too-positive final velocity (final velocity delta is negative)
+	     	-> continue negative acceleration rate past 0
+	    */
+
+		//Check which type of curve needed.  Apply velocity jerk at end if positive, at beginning if negative
+		float curve_type_check = accel_ramp_final_vel * acc_0;
+
+		//Apply jerk at end, continuing acceleration after reaching zero acceleration before going back down
+		if (curve_type_check > 0)
+		{
+
+			//Acceleration curve integral (of triangle created by passing zero acceleration, going to max accel, then back to zero)
+			float max_non_saturated_vel_delta = acc_max * acc_max / j_max;
+
+			//Check if can achieve velocity delta needed to reach zero velocity without saturating acceleration
+  			if (std::abs(accel_ramp_final_vel) < std::abs(max_non_saturated_vel_delta))
+  			{
+
+  				//Jerk applied at the end, non-saturated
+  				/*
+  				Possible to reach desired velocity by continuing acceleration ramp past zero, so check total additional ramp-up+ramp-down (or vice-versa) time
+			    Velocity delta as function of additonal time:
+			     = acc_f*t + (acc_f [triangle bottom] + acc_f + sign(accel_ramp_final_velocity_delta) * (t/2) * j_max [peak of triangle]) * 0.5 [to get avg] * t [integrate]
+			    Velocity delta =  acc_f*t + 0.5*t*(2*acc_f + 0.5*sign(accel_ramp_final_velocity_delta)*j_max*t) = 
+			    acc_f*t + acc_f*t + (1/4)*sign(accel_ramp_final_velocity_delta)*j_max*t^2  = 2*acc_f*t + (1/4)*sign(accel_ramp_final_velocity_delta)*j_max*t^2
+			    (1/4)*sign(accel_ramp_final_velocity_delta)*j_max*t^2 + 2*acc_f*t - Velocity delta = 0
+			    Quadratic equation: a = (1/4)*sign(accel_ramp_final_velocity_delta)*j_max, b = 2*acc_f, c = - velocity delta required
+			    Total additional time required = [-2*acc_f +/- sqrt(4*acc_f^2 - j_max)
+			    Total additional time required = sqrt(4 * Velocity delta required / j_max)
+				*/
+
+			    float total_time_increase = std::sqrt(4 * std::abs(accel_ramp_final_vel) / j_max);
+			    float estimated_total_time = accel_ramp_time + total_time_increase; //For debugging
+
+			    float half_ramp_time = 0.5 * total_time_increase;
+
+			    resulting_position = integrate_acceleration_rates(accel_ramp_final_pos, accel_ramp_final_vel, 0, accel_ramp_rate, half_ramp_time, 0, 0, -accel_ramp_rate, half_ramp_time);
+
+  			}
+
+  			else
+  			{
+  				//Jerk applied at the end, saturated
+  				
+  				//Required contribution to velocity delta from saturated acceleration (always a positive value here)
+			    float saturated_vel_delta_required = abs(accel_ramp_final_vel) - abs(max_non_saturated_vel_delta);
+			    
+			    //Time at acc_max required
+			    float time_at_saturated_acc = saturated_vel_delta_required / acc_max;
+			    
+
+			    float acc_max_ramp_time = acc_max / j_max; //Time taken to reach saturation point
+
+			    resulting_position = integrate_acceleration_rates(accel_ramp_final_pos, accel_ramp_final_vel, 0, accel_ramp_rate, acc_max_ramp_time, 0, time_at_saturated_acc, -accel_ramp_rate, acc_max_ramp_time);
+
+
+  			}
+
+		}
+
+		//Apply jerk at beginning away from zero acceleration, before ramping back to zero acceleration
+		else
+		{
+
+			//Max acceleration curve integral (area of triangle plus rectangle created by going opposite direction of final acceleration and then back to starting acceleration)
+    		float delta_to_max_accel = acc_max - std::abs(acc_0); //Will always be positive
+    		float time_to_max_accel =  delta_to_max_accel / j_max;
+    
+    		float max_non_saturated_vel_delta = 0.5*(std::abs(acc_0) + acc_max) * 2 * time_to_max_accel; // Avg accel * time to ramp both directions
+
+
+    		//Check if can achieve velocity delta needed to reach zero velocity without truncating/saturating acceleration
+    		if (std::abs(accel_ramp_final_vel) < abs(max_non_saturated_vel_delta))
+    		{
+    			//Jerk applied at beginning away from zero acceleration, without reaching max acceleration
+
+    			/*
+    			Find what accel would need to be ramped to in order to achieve zero velocity 
+			    - accel_ramp_final_vel = 2 * half_ramp_time * acc_0 + [area of triangle only - not rectangle underneath]
+
+			    Area of triangle = (1/2) * (2*half_ramp_time) * [std::copysignf(1.0, acc_0) * j_max * half_ramp_time]
+			    Area of triangle = std::copysignf(1.0, acc_0) * j_max * half_ramp_time^2
+
+			    - accel_ramp_final_vel = 2 * half_ramp_time * acc_0 + std::copysignf(1.0, acc_0) * j_max * half_ramp_time^2
+				std::copysignf(1.0, acc_0) * j_max * half_ramp_time^2 + 2 * half_ramp_time * acc_0 + accel_ramp_final_vel = 0
+
+			    a = std::copysignf(1.0, acc_0) * j_max
+			    b = 2 * acc_0
+			    c = accel_ramp_final_vel
+			      
+				*/
+
+
+    			float a = std::copysignf(1.0, acc_0) * j_max;
+	      		float b = 2 * acc_0;
+	      		float c = accel_ramp_final_vel;
+
+	     		float half_ramp_time = (-b + std::sqrt(std::pow(b,2) - 4*a*c)) / (2*a);
+	      
+	      		//Ensure time is positive - not guaranteed because of plus/minus in quadratic equation
+	      		if (half_ramp_time < 0)
+	      		{
+	      			half_ramp_time = (-b - std::sqrt(std::pow(b,2) - 4*a*c)) / (2*a);
+	      		}
+
+			float ramp_end_acc = acc_0 + half_ramp_time * j_max * std::copysignf(1.0, acc_0);
+	      		float final_ramp_time = std::abs(ramp_end_acc)  / j_max; //Time to ramp from end of half_ramp_time down to zero acceleration
+
+	      		resulting_position = integrate_acceleration_rates(pos_0, vel_0, acc_0, -accel_ramp_rate, half_ramp_time, 0, 0, accel_ramp_rate, final_ramp_time);
+
+    		}
+
+    		else
+    		{
+
+      			//Required contribution to velocity delta from saturated acceleration (always a positive value here)
+     			float saturated_vel_delta_required = std::abs(accel_ramp_final_vel) - std::abs(max_non_saturated_vel_delta);
+    
+      			//Time at acc_max required (will always end up being positive)
+      			float time_to_max_acc = (acc_max - std::abs(acc_0)) / j_max;
+
+      			//Time at acc_max required (will always end up being positive)
+      			float time_at_max_acc = saturated_vel_delta_required / acc_max;
+
+      			float time_to_zero_acc = acc_max / j_max;
+
+	      		resulting_position = integrate_acceleration_rates(pos_0, vel_0, acc_0, -accel_ramp_rate, time_to_max_acc, 0, time_at_max_acc, accel_ramp_rate, time_to_zero_acc);
+
+    		}
+
+
+
+		}
+
+
+		return resulting_position;
+
+	}
+
+
+/*
+	Input: current location information, receiver commands
+	Output: series of accelerations that will result in control around target points
+
+	Find acceleration rates
+
+*/
+Eigen::MatrixXf Control::acceleration_controller()
+	{
+		Eigen::MatrixXf target_accelerations(1,5);
+		
+		float max_roll_acceleration = 2; //Rad/sec^2
+		float max_roll_acceleration_rate = 6; //Rad/sec^2 per second
+		float max_pitch_acceleration = 2; //Rad/sec^2
+		float max_pitch_acceleration_rate = 6; //Rad/sec^2 per second
+
+		float max_yaw_acceleration = 2; //Rad/sec^2
+		float max_yaw_acceleration_rate = 6; //Rad/sec^2 per second
+
+		float max_translational_acceleration = 15; //m/s^2
+		float max_x_acceleration_rate = 30; //m/s^2 per second
+		float max_z_acceleration_rate = 30; //m/s^2 per second
+
+
+		float calculated_roll_acceleration = end_of_loop_theoretical_fan_forces_and_moments(0,0) / roll_moment_of_inertia;
+		float calculated_pitch_acceleration = end_of_loop_theoretical_fan_forces_and_moments(0,1) / pitch_moment_of_inertia;
+		float calculated_yaw_acceleration = end_of_loop_theoretical_fan_forces_and_moments(0,2) / yaw_moment_of_inertia;
+
+		float calculated_x_acceleration = end_of_loop_theoretical_fan_forces_and_moments(0,3) / vehicle_mass; //Calculated x acceleration due to motors and servos
+		float calculated_z_acceleration = end_of_loop_theoretical_fan_forces_and_moments(0,4) / vehicle_mass;
+
+
+		//Translational Accelerations
+		float target_total_translational_acceleration = Current_Receiver_Values_ptr->thrust * max_translational_acceleration; //Max total acceleration set to 17 m/s^2
+
+		if (Current_Receiver_Values_ptr->thrust < 0.1){
+
+			if (calculated_roll_acceleration > 0){
+				target_accelerations(0,0) = calculated_roll_acceleration - max_roll_acceleration_rate * loop_time;
+				if (target_accelerations(0,0) < 0){target_accelerations(0,0) = 0;}
+			}
+			else{
+				target_accelerations(0,0) = calculated_roll_acceleration + max_roll_acceleration_rate * loop_time;
+				if (target_accelerations(0,0) > 0){target_accelerations(0,0) = 0;}
+			}
+
+
+			if (calculated_pitch_acceleration > 0){
+				target_accelerations(0,1) = calculated_pitch_acceleration - max_pitch_acceleration_rate * loop_time;
+				if (target_accelerations(0,1) < 0){target_accelerations(0,1) = 0;}
+			}
+			else{
+				target_accelerations(0,1) = calculated_pitch_acceleration + max_pitch_acceleration_rate * loop_time;
+				if (target_accelerations(0,1) > 0){target_accelerations(0,1) = 0;}
+			}
+
+
+			if (calculated_yaw_acceleration > 0){
+				target_accelerations(0,2) = calculated_yaw_acceleration - max_yaw_acceleration_rate * loop_time;
+				if (target_accelerations(0,2) < 0){target_accelerations(0,2) = 0;}
+			}
+			else{
+				target_accelerations(0,2) = calculated_yaw_acceleration + max_yaw_acceleration_rate * loop_time;
+				if (target_accelerations(0,2) > 0){target_accelerations(0,2) = 0;}
+			}
+
+			target_accelerations(0,3) = calculated_x_acceleration - max_x_acceleration_rate * loop_time;
+			if (target_accelerations(0,3) < 0){target_accelerations(0,3) = 0;}
+
+			target_accelerations(0,4) = calculated_z_acceleration - max_z_acceleration_rate * loop_time;
+			if (target_accelerations(0,4) < 0){target_accelerations(0,4) = 0;}
+
+
+			return target_accelerations;
+		}
+
+		//0 for accelerating straight up in body frame, 1.57 (rads) for directly forwards
+		 //Dial goes from -1 to 1.  Set to 1.745 (100 degrees) so can multiply by 100 to get actual angle
+		float translational_acceleration_vector_angle = 0;//Receiver->dial1 * 1.745; //CHANGE!!!!!!!
+
+
+		//Z and X acceleration from total desired and desired vector
+		float target_x_acceleration = target_total_translational_acceleration * sin(translational_acceleration_vector_angle);
+		float target_z_acceleration = target_total_translational_acceleration * cos(translational_acceleration_vector_angle);
+
+		std::cout << "target_total_translational_acceleration: " <<  target_total_translational_acceleration <<std::endl;
+
+		std::cout << "target_x_acceleration: " <<  target_x_acceleration <<std::endl;
+		std::cout << "target_z_acceleration: " << target_z_acceleration << std::endl;
+
+		std::cout << "calculated_x_acceleration: " << calculated_x_acceleration << std::endl;
+
+		std::cout << "calculated_z_acceleration: " << calculated_z_acceleration << std::endl;
+
+		//Ramp up x acceleration for next timestep if below target.  Otherwise ramp down.
+		if (calculated_x_acceleration < target_x_acceleration)
+		{
+			Accelerations.x_acceleration = calculated_x_acceleration + max_x_acceleration_rate * loop_time;
+			if (Accelerations.x_acceleration > target_x_acceleration)
+			{
+				Accelerations.x_acceleration = target_x_acceleration;
+			}
+
+		}
+		else
+		{
+			Accelerations.x_acceleration = calculated_x_acceleration - max_x_acceleration_rate * loop_time;
+			if (Accelerations.x_acceleration < target_x_acceleration)
+			{
+				Accelerations.x_acceleration = target_x_acceleration;
+			}
+
+		}
+
+		//Ramp up z acceleration for next timestep if below target.  Otherwise ramp down.
+		if (calculated_z_acceleration < target_z_acceleration)
+		{
+			Accelerations.z_acceleration = calculated_z_acceleration + max_z_acceleration_rate * loop_time;
+			if (Accelerations.z_acceleration > target_z_acceleration)
+			{
+				Accelerations.z_acceleration = target_z_acceleration;
+			}
+
+			float z_i = Accelerations.z_acceleration - calculated_z_acceleration;
+			std::cout << "Increasing z by: " << z_i << std::endl;
+		}
+		else
+		{
+			Accelerations.z_acceleration = calculated_z_acceleration - max_z_acceleration_rate * loop_time;
+			if (Accelerations.z_acceleration < target_z_acceleration)
+			{
+				Accelerations.z_acceleration = target_z_acceleration;
+			}
+
+			float z_d = - Accelerations.z_acceleration + calculated_z_acceleration;
+			std::cout << "Decreasing z by: " << z_d << std::endl;
+		}
+
+
+
+
+
+		//Angle targets
+		float max_roll_angle = 0.3; //Radians
+		float roll_target = Current_Receiver_Values_ptr->roll * max_roll_angle;
+
+		float max_pitch_angle = 0.3; //Radians
+		float pitch_target = Current_Receiver_Values_ptr->pitch * max_pitch_angle;
+
+		float max_yaw_angle = 0.3; //Radians
+		float yaw_target = Current_Receiver_Values_ptr->yaw * max_yaw_angle;
+
+		
+
+		float roll_acceleration = calculated_roll_acceleration; //Should be from Location-> in future - integrate model with sensor data
+
+		float estimated_final_roll_position = estimate_position_after_acceleration_rate_control(Current_Location_ptr->roll, Current_Location_ptr->roll_rate, roll_acceleration, max_roll_acceleration, max_roll_acceleration_rate);
+
+		if (estimated_final_roll_position < roll_target)
+		{
+			Accelerations.roll_acceleration = calculated_roll_acceleration + max_roll_acceleration_rate * loop_time;
+
+		}
+		else
+		{
+			Accelerations.roll_acceleration = calculated_roll_acceleration - max_roll_acceleration_rate * loop_time;
+		}
+
+
+
+		float pitch_acceleration = calculated_pitch_acceleration; //Should be from Location-> in future - integrate model with sensor data
+
+		float estimated_final_pitch_position = estimate_position_after_acceleration_rate_control(Current_Location_ptr->pitch, Current_Location_ptr->pitch_rate, pitch_acceleration, max_pitch_acceleration, max_pitch_acceleration_rate);
+
+		if (estimated_final_pitch_position < pitch_target)
+		{
+			Accelerations.pitch_acceleration = calculated_pitch_acceleration + max_pitch_acceleration_rate * loop_time;
+		}
+		else
+		{
+			Accelerations.pitch_acceleration = calculated_pitch_acceleration - max_pitch_acceleration_rate * loop_time;
+		}
+
+
+
+		float yaw_acceleration = calculated_yaw_acceleration; //Should be from Location-> in future - integrate model with sensor data
+
+
+		float estimated_final_relative_yaw_position = estimate_position_after_acceleration_rate_control(0, Current_Location_ptr->heading_rate, yaw_acceleration, max_yaw_acceleration, max_yaw_acceleration_rate);
+
+		float radians_to_yaw_target = yaw_target - Current_Location_ptr->heading; //Positive if need to yaw right more to hit target
+
+		if (radians_to_yaw_target < -M_PI){
+			radians_to_yaw_target = M_PI - (-radians_to_yaw_target - M_PI); //Parens term is how much overshot in negative direction, always positive
+		}
+
+		if (radians_to_yaw_target > M_PI){
+			radians_to_yaw_target = -M_PI + (radians_to_yaw_target - M_PI); //Parens term is how much overshot in negative direction, always positive
+		}
+
+		if (estimated_final_relative_yaw_position < radians_to_yaw_target)
+		{
+			Accelerations.yaw_acceleration = calculated_yaw_acceleration + max_yaw_acceleration_rate * loop_time;
+		}
+		else
+		{
+			Accelerations.yaw_acceleration = calculated_yaw_acceleration - max_yaw_acceleration_rate * loop_time;
+		}
+
+
+
+		
+
+		target_accelerations(0,0) = Accelerations.roll_acceleration;
+		target_accelerations(0,1) = Accelerations.pitch_acceleration;
+		target_accelerations(0,2) = Accelerations.yaw_acceleration;
+		target_accelerations(0,3) = Accelerations.x_acceleration;
+		target_accelerations(0,4) = Accelerations.z_acceleration;
+
+		std::ofstream LOG;
+		LOG.open("testlog.txt", std::ios::out | std::ios::app);
+		LOG << "Acc controller RPYXZ: " << target_accelerations(0,0);
+		LOG << ", " << target_accelerations(0,1);
+		LOG << ", " << target_accelerations(0,2);
+		LOG << ", " << target_accelerations(0,3);
+		LOG << ", " << target_accelerations(0,4) << "\n\n";
+		
+		return target_accelerations;
+	
+	}
+
+
+
+
 
 
 
@@ -1269,6 +1745,7 @@ Control::SERVO_MODEL_OUTPUT Control::run_servo_model(int servo_num, float PWM_mi
 */
 
 //void Control::acceleration_controller(Location::LOCATION * Location, Receiver::RECEIVER * Receiver)
+/*
 Eigen::MatrixXf Control::acceleration_controller()
 	{
 
@@ -1468,14 +1945,14 @@ Eigen::MatrixXf Control::acceleration_controller()
 		//float a = _Current_Receiver_Values_ptr_for_Control.Receiver.thrust;
 		//std::cout << "Receiver: "  << a << " \n";
 
-		/*
+		
 		//Input fake accelerations for testing
-		Accelerations.roll_acceleration = -2.66;
-		Accelerations.pitch_acceleration = 2.66;
-		Accelerations.yaw_acceleration = 0.55;
-		Accelerations.x_acceleration = 0;
-		Accelerations.z_acceleration = 14.5;
-		*/
+		//Accelerations.roll_acceleration = -2.66;
+		//Accelerations.pitch_acceleration = 2.66;
+		//Accelerations.yaw_acceleration = 0.55;
+		//Accelerations.x_acceleration = 0;
+		//Accelerations.z_acceleration = 14.5;
+		
 
 
 
@@ -1496,7 +1973,7 @@ Eigen::MatrixXf Control::acceleration_controller()
 		LOG << ", " << target_accelerations(0,4) << "\n\n";
 
 
-/*
+
 		printf("Rad to roll target: %f \n", radians_to_roll_target);
 		printf("Rad to pitch target: %f \n", radians_to_pitch_target);
 
@@ -1508,13 +1985,11 @@ Eigen::MatrixXf Control::acceleration_controller()
 
 		std::cout << "Accelerations desired: "  << target_accelerations << " \n";
 		
-*/
+
 		return target_accelerations;
 
-
-
 	}
-
+*/
 
 
 
@@ -1905,6 +2380,8 @@ Eigen::MatrixXf Control::iterate_thrusts_and_angles(Eigen::MatrixXf thrusts_and_
 Eigen::MatrixXf Control::get_theoretical_rot_vel_and_servo_angle_deltas(Eigen::MatrixXf target_forces_and_moments) //Eigen::MatrixXf target_forces_and_moments
 	{
 
+		Eigen::MatrixXf req_thrusts_and_angles;
+		Eigen::MatrixXf req_vels_and_angles(12,1);
 
 
 		//Initial guess for servo angles in radians from forces required
@@ -1912,6 +2389,15 @@ Eigen::MatrixXf Control::get_theoretical_rot_vel_and_servo_angle_deltas(Eigen::M
 		float target_z_force = target_forces_and_moments(0,4);
 		float avg_servo_angle = atan2(target_x_force, target_z_force);
 		float avg_thrust = sqrt(pow(target_x_force, 2) + pow(target_z_force,2)) / 8;
+
+		if (avg_thrust == 0)
+		{
+			req_vels_and_angles.setZero(12,1);
+			theoretical_rot_vel_and_servo_angle_deltas = req_vels_and_angles - end_of_loop_motor_vels_and_servo_angles;
+
+			return theoretical_rot_vel_and_servo_angle_deltas;
+
+		}
 
 
 		//Initial guess at motor thrusts and servo angles that will generate the target moments and forces
@@ -1934,7 +2420,7 @@ Eigen::MatrixXf Control::get_theoretical_rot_vel_and_servo_angle_deltas(Eigen::M
 		auto run_1 = std::chrono::steady_clock::now();
 
 		float accuracy_requirement = 0.01;
-		Eigen::MatrixXf req_thrusts_and_angles = iterate_thrusts_and_angles(thrusts_and_angles_guess, target_forces_and_moments, accuracy_requirement); 
+		req_thrusts_and_angles = iterate_thrusts_and_angles(thrusts_and_angles_guess, target_forces_and_moments, accuracy_requirement); 
 
 
 		auto run_2 = std::chrono::steady_clock::now();
@@ -1943,11 +2429,13 @@ Eigen::MatrixXf Control::get_theoretical_rot_vel_and_servo_angle_deltas(Eigen::M
 
 		printf("Iteration time: %li \n", run_time);
 
+		std::cout << "Target forces and moments: " << target_forces_and_moments << std::endl;
+		std::cout << "Required thrusts and angles: " << req_thrusts_and_angles.transpose() << std::endl;
 
 
 
 
-		Eigen::MatrixXf req_vels_and_angles(12,1);
+
 
 		//Find rotational velocities required to acheive given thrust desired on each fan
 		for (int i=0; i<8; i++)
@@ -1961,8 +2449,9 @@ Eigen::MatrixXf Control::get_theoretical_rot_vel_and_servo_angle_deltas(Eigen::M
 			float zero_inflow_fan_thrust_req = req_thrusts_and_angles(i,0) + 0.010575 * std::pow(inflow_velocity,2);
 
 			float non_squareroot_coeff = std::pow(propulsion_units[i].fan.fan_thrust_coefficient, 2);
-			req_vels_and_angles(i,0) = std::sqrt(zero_inflow_fan_thrust_req * non_squareroot_coeff);
+			float sealevel_req_vel = std::sqrt(zero_inflow_fan_thrust_req * non_squareroot_coeff);
 
+			req_vels_and_angles(i,0) = sealevel_req_vel / std::sqrt(Current_Location_ptr->air_density_fraction);
 		} 
 
 
@@ -2041,6 +2530,7 @@ void Control::get_next_loop_rot_vel_and_servo_angle_deltas()
 		for (int i=0; i<4; i++)
     	{
 
+
     		if (theoretical_rot_vel_and_servo_angle_deltas(i+8,0) > 0){
 
     			float multiple = theoretical_rot_vel_and_servo_angle_deltas(i+8,0) / servo_units[i].max_positive_angle_delta;
@@ -2062,13 +2552,13 @@ void Control::get_next_loop_rot_vel_and_servo_angle_deltas()
 
 
 
-		next_loop_rot_vel_and_servo_angle_deltas = theoretical_rot_vel_and_servo_angle_deltas / max_delta_multiple_over_allowable;
+		next_loop_rot_vel_and_servo_angle_deltas = theoretical_rot_vel_and_servo_angle_deltas; //Changed to not scale down / max_delta_multiple_over_allowable;
 
 
 		//Set fan rotational velocity deltas for next loop
 		for (int i=0; i<8; i++)
     	{
-			propulsion_units[i].rotational_velocity_delta_required = next_loop_rot_vel_and_servo_angle_deltas(i,0);
+			propulsion_units[i].rotational_velocity_delta_required = theoretical_rot_vel_and_servo_angle_deltas(i,0); //CHANGED TO NOT DO ANY SCALING
 		}
 
 
@@ -2076,14 +2566,15 @@ void Control::get_next_loop_rot_vel_and_servo_angle_deltas()
 		//Set servo angle deltas for next loop
 		for (int i=0; i<4; i++)
     	{
-    		servo_units[i].angle_delta_required = next_loop_rot_vel_and_servo_angle_deltas(i+8,0);
+    		servo_units[i].angle_delta_required = theoretical_rot_vel_and_servo_angle_deltas(i+8,0);
 		}
 
 
-/*
-		printf("max multiple, motors: %f \n", max_delta_multiple_over_allowable);
-		printf("max multiple, servos: %f \n", max_delta_multiple_over_allowable);
-*/
+
+		//printf("max multiple, motors: %f \n", max_delta_multiple_over_allowable);
+		//printf("max multiple, servos: %f \n", max_delta_multiple_over_allowable);
+		//Should always be 1 with working acceleration controller
+
 
 
 
@@ -2492,9 +2983,13 @@ void Control::servo_angle_delta_to_pwm_required(int servo_num)
 void Control::send_pwms()
 {
 
+	std::cout << "servo 0 micros - 2: " << servo_units[0].PWM_micros << std::endl;
+
 	std::ofstream LOG;
 	LOG.open("testlog.txt", std::ios::out | std::ios::app);
 	LOG << "Motor PWMs: ";
+
+	LOG << "prop 0 micros: " << propulsion_units[0].PWM_micros;
 
 	printf("Motor PWMs: ");
 
@@ -2502,14 +2997,17 @@ void Control::send_pwms()
 	//Send motor PWMs to GPIOs
 	for (int i=0; i<8; i++)
     	{
+		LOG << "prop 0 micros 2: " << propulsion_units[0].PWM_micros;
 		printf(" %8.0f ", propulsion_units[i].PWM_micros);
     		//Send pulse to GPIO pin
 			//send_microseconds(propulsion_units[i].gpio_pin, propulsion_units[i].PWM_micros);
+LOG << "prop 0 micros 3: " << propulsion_units[0].PWM_micros;
 			float PCA9685_PWM_period_micros = 1000000 / PCA9685_FREQ;
     		float duty_cycle = propulsion_units[i].PWM_micros / PCA9685_PWM_period_micros;
     		int register_input = duty_cycle * 4096;
 
-			//std::cout << "Reg in: " << register_input << std::endl;
+			//std::cout << "Reg in: " << register_input << std::endl;	
+LOG << "prop 0 micros 4: " << propulsion_units[0].PWM_micros;
 			LOG << propulsion_units[i].PWM_micros << ", ";
 			setPWM_Fast(propulsion_units[i].gpio_pin, register_input);
 			//setPWM(i, 0, 1000);
@@ -2681,6 +3179,7 @@ void Control::send_XPlane_inputs()
 void Control::run(Location::LOCATION * Current_Location_Pointer, Receiver::RECEIVER * Current_Receiver_Values_Pointer)
 	{
 
+
 		auto run_start = std::chrono::steady_clock::now();
 
 		if (verbose){
@@ -2704,8 +3203,22 @@ void Control::run(Location::LOCATION * Current_Location_Pointer, Receiver::RECEI
 		end_of_loop_theoretical_fan_forces_and_moments = get_end_of_loop_theoretical_fan_forces_and_moments();
 
 
+		std::ofstream LOG;
+		LOG.open(LOG_PATH, std::ios::out | std::ios::app);	
+		LOG << "end_of_loop_motor_vels_and_servo_angles: " << std::fixed << std::setprecision(3) << end_of_loop_motor_vels_and_servo_angles.transpose() << "\n";
+		LOG << "end_of_loop_thrusts_and_angles: " << std::fixed << std::setprecision(3) << end_of_loop_thrusts_and_angles.transpose() << "\n";
+		LOG << "end_of_loop_theoretical_fan_forces_and_moments: " << end_of_loop_theoretical_fan_forces_and_moments << "\n";
+		LOG.close();
+
+
 		if(verbose){
+			std::cout << "end_of_loop_motor_vels_and_servo_angles: " << end_of_loop_motor_vels_and_servo_angles.transpose() << std::endl;
+
+			std::cout << "end_of_loop_thrusts_and_angles: " << end_of_loop_thrusts_and_angles.transpose() << std::endl;
+
 			std::cout << "end_of_loop_theoretical_fan_forces_and_moments: " << end_of_loop_theoretical_fan_forces_and_moments << std::endl;
+
+
 		}
 
 
@@ -2746,16 +3259,23 @@ void Control::run(Location::LOCATION * Current_Location_Pointer, Receiver::RECEI
 		Eigen::MatrixXf target_forces_and_moments = accelerations_to_forces_and_moments(target_accelerations); //6 microseconds
 
 
+		LOG.open(LOG_PATH, std::ios::out | std::ios::app);	
+		LOG << "target_accelerations: " << std::fixed << std::setprecision(3) << target_accelerations << "\n";
+		LOG << "target_forces_and_moments: " << std::fixed << std::setprecision(3) << target_forces_and_moments << "\n";
+		LOG.close();
+
 		//std::cout << "long term target_forces_and_moments:" << target_forces_and_moments  << std::endl;
 
 		if(verbose){
-			std::cout << "long term target_forces_and_moments:" << target_forces_and_moments  << std::endl;
+			std::cout << "target_forces_and_moments:" << target_forces_and_moments  << std::endl;
 		}
 
 		auto run_1 = std::chrono::steady_clock::now();
 
 		//Get delta rotational velocities and delta servo angles that would be needed to generate desired moments (likely not possible in next timestep)
 		Eigen::MatrixXf theoretical_rot_vel_and_servo_angle_deltas = get_theoretical_rot_vel_and_servo_angle_deltas(target_forces_and_moments); //target_forces_and_moments
+
+		std::cout << "theoretical_rot_vel_and_servo_angle_deltas:" << theoretical_rot_vel_and_servo_angle_deltas.transpose()  << std::endl;
 
 		auto run_2 = std::chrono::steady_clock::now();
 
@@ -2765,6 +3285,7 @@ void Control::run(Location::LOCATION * Current_Location_Pointer, Receiver::RECEI
 
 
 		Eigen::MatrixXf longterm_target_vels_and_angles = end_of_loop_motor_vels_and_servo_angles + theoretical_rot_vel_and_servo_angle_deltas;
+
 
 
 
@@ -2786,6 +3307,14 @@ void Control::run(Location::LOCATION * Current_Location_Pointer, Receiver::RECEI
 		//std::cout << "target_force_and_mom_result : " << std::endl;
 		//std::cout << target_force_and_mom_result  << std::endl;
 
+
+		LOG.open(LOG_PATH, std::ios::out | std::ios::app);	
+		LOG << "theoretical_rot_vel_and_servo_angle_deltas: " << std::fixed << std::setprecision(3) << theoretical_rot_vel_and_servo_angle_deltas.transpose() << "\n";
+		LOG << "target vels and angles: " << std::fixed << std::setprecision(3) << longterm_target_vels_and_angles.transpose() << "\n";
+		LOG << "target_force_and_mom_result: " << std::fixed << std::setprecision(3) << target_force_and_mom_result << "\n";
+		LOG.close();
+
+
 		if(verbose){
 			std::cout << "target_force_and_mom_result : " << std::endl;
 			std::cout << target_force_and_mom_result  << std::endl;
@@ -2797,6 +3326,17 @@ void Control::run(Location::LOCATION * Current_Location_Pointer, Receiver::RECEI
 		get_next_loop_rot_vel_and_servo_angle_deltas();
 
 
+		LOG.open(LOG_PATH, std::ios::out | std::ios::app);
+		LOG << "Motor max pos deltas: ";
+		for (int i=0; i<8; i++) {LOG << propulsion_units[i].max_positive_rot_vel_delta << " ";}
+		LOG << "\nMotor max neg deltas: ";
+		for (int i=0; i<8; i++) {LOG << propulsion_units[i].max_negative_rot_vel_delta << " ";}
+		LOG << "\nServo max pos deltas: ";
+		for (int i=0; i<4; i++) {LOG << servo_units[i].max_positive_angle_delta << " ";}
+		LOG << "\nServo max neg deltas: ";
+		for (int i=0; i<4; i++) {LOG << servo_units[i].max_negative_angle_delta << " ";}
+		LOG << "\n";
+		LOG.close();
 
 
 		if(verbose){
@@ -2844,6 +3384,500 @@ void Control::run(Location::LOCATION * Current_Location_Pointer, Receiver::RECEI
 		rot_vel_and_servo_angle_deltas_to_pwms();
 
 
+		LOG.open(LOG_PATH, std::ios::out | std::ios::app);
+		LOG << "Motor PWMs: ";
+		for (int i=0; i<8; i++) {LOG << propulsion_units[i].PWM_micros << " ";}
+		LOG << "\nServo PWMs: ";
+		for (int i=0; i<4; i++) {LOG << servo_units[i].PWM_micros << " ";}
+		LOG << "\n";
+		LOG.close();
+
+
+		if(verbose){
+
+			printf("\n PWMS: ");
+			for (int i=0; i<8; i++){printf(" %f ", propulsion_units[i].PWM_micros);}
+			printf("\n Servo PWMS: ");
+			for (int i=0; i<4; i++){printf(" %f ", servo_units[i].PWM_micros);}
+			printf("\n ");
+			
+		}
+
+
+
+		//Send PWMs directly to GPIO pins
+		send_pwms(); //87 microseconds
+
+
+		//Send fan forces and moments generated by last set of pwms (not set of pwms found in this loop) to XPlane
+		//send_XPlane_inputs();
+
+	
+
+		//For timing experimentation
+		auto run_stop = std::chrono::steady_clock::now();
+		auto run_time = std::chrono::duration_cast<std::chrono::microseconds>(run_stop - run_start).count();
+		//printf("Run() time: %li \n", run_time);
+
+		std::cout <<"Loop time used for control: " << loop_time << std::endl;
+
+/*
+		auto run_time1 = std::chrono::duration_cast<std::chrono::microseconds>(run_stop - run_1).count();
+		auto run_time2 = std::chrono::duration_cast<std::chrono::microseconds>(run_stop - run_2).count();
+
+		printf("Run() time1: %li \n", run_time1);
+		printf("Run() time2: %li \n", run_time2);
+		
+		*/
+
+	}
+
+
+
+
+/*
+	Run the control system functions and send the output directly to the motors
+
+*/
+void Control::run2(Location::LOCATION * Current_Location_Pointer, Receiver::RECEIVER * Current_Receiver_Values_Pointer)
+	{
+
+	std::ofstream LOG;
+	LOG.open("testlog.txt", std::ios::out | std::ios::app);
+	LOG << "Starting run2(): \n";
+
+
+
+		auto run_start = std::chrono::steady_clock::now();
+
+		if (verbose){
+			printf("Starting run() \n");
+		}
+
+		Current_Location_ptr = Current_Location_Pointer;
+
+		Current_Receiver_Values_ptr = Current_Receiver_Values_Pointer;
+
+
+	float pitch = Current_Location_Pointer->pitch * 180 / 3.14159;
+	float roll = Current_Location_Pointer->roll * 180 / 3.14159;
+	float heading = Current_Location_Pointer->heading * 180 / 3.14159;
+	float pitch_rate = Current_Location_Pointer->pitch_rate * 180 / 3.14159;
+	float roll_rate = Current_Location_Pointer->roll_rate * 180 / 3.14159;
+	float heading_rate = Current_Location_Pointer->heading_rate * 180 / 3.14159;
+
+	LOG << "RPY, rates: " << pitch << " " << roll << " " << heading << " " << roll_rate << " " << pitch_rate << " " << heading_rate << "\n";
+
+
+	float Pitch_P = 0.32;
+	float Roll_P = 0.08;
+
+	float Pitch_D = 0.015;
+	float Roll_D = 0.007;
+
+	float fr_x = 37.5; //X is front-back axis, front is +
+	float fr_y = 9; //Y is left-right axis, right is +
+
+	float fl_x = 37.5;
+	float fl_y = -9;
+
+	float brc_x = -12.5;
+	float brc_y = 15;
+
+	float blc_x = -12.5;
+	float blc_y = -15;
+
+
+	float max_roll_angle = 15; //Degrees
+	float roll_target = Current_Receiver_Values_Pointer->roll * max_roll_angle;
+	//roll_target = 0; //CHANGE!!!
+
+	float max_pitch_angle = 25; //Degrees
+	float pitch_target = Current_Receiver_Values_Pointer->pitch * max_pitch_angle;
+	//pitch_target = 0; //CHANGE!!!
+
+
+
+	//Something quick to stabilize yaw
+	float yaw_slew = 0; //Max rate of change in desired yaw - degrees per second
+	//dt = micros() - l_time;
+	dt = loop_time * 1000000;
+	//Handle problem where very first dt is huge because l_time starts at 0.
+	/*
+	if (l_time == 0){
+		dt = 10000;
+	}
+	l_time = micros();*/
+	
+	//desired_yaw_delta = 0; //CHANGE!!!
+
+	//desired_yaw = desired_yaw + desired_yaw_delta; //Desired yaw in degrees from 0 to 360.  For slewing desired yaw angle.  Hard to control.
+
+	float max_yaw_delta = 20; //Max desired deviation from starting yaw.  Yaw in center always desired yaw = starting yaw.
+	desired_yaw = Current_Receiver_Values_Pointer->yaw * max_yaw_delta;
+	desired_yaw = 0; //CHANGE!!!
+
+	if (desired_yaw > 360){
+		desired_yaw = desired_yaw - 360;
+	}
+	if(desired_yaw < 0){
+		desired_yaw = desired_yaw + 360;
+	}
+
+	//Yaw error from -360 to 360.  So if at 20 deg and desired yaw is 10 deg, should be 10.  At 0, should be -10.
+	float yaw_error = heading - desired_yaw;
+	if (yaw_error > 180){
+		yaw_error = yaw_error - 360;
+	}
+	if(yaw_error < -180){
+		yaw_error = yaw_error + 360;
+	}
+
+
+
+	//Rate control method - try to get to a desired roll, pitch, yaw rate.  Probably should be some function of error (Ardupilot does sqrt)
+	//Linear around 0, then goes to square root (or else very fast rate change around 0)
+	//Even without any D gain, this is super stable - disturbances have a little shake but not much
+	float pitch_rate_target;
+	if (std::abs(pitch_target - pitch) > 2){
+		//copysignf (f for float) makes value of first argument the sign (+ or -) of second argument
+		pitch_rate_target = 6 * std::copysignf(std::sqrt(std::abs(pitch_target - pitch)-1), (pitch_target - pitch));//5 deg->12dps, 10dps>18deg/s
+	}
+	else{
+		pitch_rate_target = (pitch_target - pitch) * 3;
+		float a = pitch_target - pitch;
+		//std::cout << " pitch delta: " << a <<std::endl;
+		//std::cout << " pitch rate target: " << pitch_rate_target <<std::endl;
+	}
+
+	float roll_rate_target;
+	if (std::abs(roll_target - roll) > 2){
+		//copysignf (f for float) makes value of first argument the sign (+ or -) of second argument
+		roll_rate_target = 6 * std::copysignf(std::sqrt(std::abs(roll_target - roll)), (roll_target - roll)); //If rolled right, should be neg
+	}
+	else{
+		roll_rate_target = (roll_target - roll) * 3;
+	}
+
+	//std::cout << " pitch target: " << pitch_target <<std::endl;
+	//std::cout << " pitch: " << pitch <<std::endl;
+
+	//std::cout << " roll rate target: " << roll_rate_target <<std::endl;
+	//std::cout << " pitch rate target: " << pitch_rate_target <<std::endl;
+
+	//roll_rate_target = roll_rate_target * 3 * Receiver->dial1;
+
+
+	float yaw_rate_target;
+	if (std::abs(yaw_error) > 2){
+		//copysignf (f for float) makes value of first argument the sign (+ or -) of second argument
+		yaw_rate_target = 6 * std::copysignf(std::sqrt(std::abs(yaw_error)), (-yaw_error)); //Negative if yawed right
+	}
+	else{
+		yaw_rate_target = (-yaw_error) * 3;
+	}
+	//yaw_rate_target = constrain(yaw_rate_target, -45, 45);
+
+
+	Pitch_Rate_P = 0.03; //How much to accelerate towards target rate.  More than about 0.03 on Deathtrap and starts to shake.
+	Roll_Rate_P = 0.03; //0.1, with sqrt p = 6, -> 1.8 for 10 deg with no rate (3 and 1 for 10 deg, no rate PID pitch, roll)
+	Yaw_Rate_P = 0.09;
+
+
+
+	//Serial.println(" ");
+	//Serial.print("Roll_Rate_P = ");  Serial.print(Roll_Rate_P);
+
+	float pitch_rate_error = (pitch_rate - pitch_rate_target);
+	float roll_rate_error = (roll_rate - roll_rate_target); //If rolled right at no rate, should be positive
+	float yaw_rate_error = (heading_rate - yaw_rate_target); //If yawed right and no rate, should be positive
+
+	//std::cout << " pitch rate error: " << pitch_rate_error << std::endl;
+	//std::cout << " roll rate error: " << roll_rate_error << std::endl;
+	//std::cout << " yaw rate error: " << yaw_rate_error << std::endl;
+
+
+	float pitch_rate_error_deriv = (pitch_rate_error - pitch_rate_error_3) / (3*dt / 1000000); //
+
+	float roll_rate_error_deriv = (roll_rate_error - roll_rate_error_3) / (3*dt / 1000000);
+
+	//std::cout << " pitch rate error deriv: " << pitch_rate_error_deriv << std::endl;
+	//std::cout << " roll rate error deriv: " << roll_rate_error_deriv << std::endl;
+
+
+	//Adding in D term for Location->pitch_rate, etc. always makes more shaky - tried adjusting with dial from 0-0.04.  0 best.
+	//For rate_error_derivs, starts to shudder around 0.0015.  0.0005 no real shudder but makes control feel tighter (oscillations immediately damped)
+	//pitch_rate_error_int * 0.0015, above 0.0015 it starts oscillations
+	float Pitch_Thrust = pitch_rate_error * Pitch_Rate_P + pitch_rate_error_int * 0 + pitch_rate_error_deriv * 0.0005;
+	//Pitch_Thrust = 0;
+
+	float Roll_Thrust = roll_rate_error * Roll_Rate_P + roll_rate_error_deriv * 0.0005;
+	//Roll_Thrust = 0;
+
+
+	float Yaw_Thrust = yaw_rate_error * Yaw_Rate_P; //If yawed right and no rate, should be positive
+	//Yaw_Thrust = 0;
+
+	std::cout << " roll thrust: " << Roll_Thrust << std::endl;
+	std::cout << " pitch thrust: " << Pitch_Thrust << std::endl;
+	std::cout << " yaw thrust: " << Yaw_Thrust << std::endl;
+
+	//Record most recent roll, pitch rates.  Super stable with just P rate gain
+	roll_rate_error_3 = roll_rate_error_2;
+	roll_rate_error_2 = roll_rate_error_1;
+	roll_rate_error_1 = roll_rate_error;
+
+	pitch_rate_error_3 = pitch_rate_error_2;
+	pitch_rate_error_2 = pitch_rate_error_1;
+	pitch_rate_error_1 = pitch_rate_error;
+
+	yaw_rate_error_3 = yaw_rate_error_2;
+	yaw_rate_error_2 = yaw_rate_error_1;
+	yaw_rate_error_1 = yaw_rate_error;
+
+	roll_rate_3 = roll_rate_2;
+	roll_rate_2 = roll_rate_1;
+	roll_rate_1 = roll_rate;
+
+	pitch_rate_3 = pitch_rate_2;
+	pitch_rate_2 = pitch_rate_1;
+	pitch_rate_1 = pitch_rate;
+
+	yaw_rate_3 = yaw_rate_2;
+	yaw_rate_2 = yaw_rate_1;
+	yaw_rate_1 = heading_rate;
+
+
+
+	//PD method
+	/*
+	float Pitch_Thrust = (Location->pitch - pitch_target) * Pitch_P + Location->pitch_rate * Pitch_D;
+
+	float Roll_Thrust = (Location->roll - roll_target) * Roll_P + Location->roll_rate * Roll_D; //If rolled right at no rate, should be positive
+
+	float Yaw_Thrust = yaw_error * 0.08 + Location->yaw_rate * 0.015;
+	*/
+
+
+	//Pitch thrust should go from full value at 0 deg, half at 45 deg, none at 90 deg (try sinusoid later)
+	float pitch_thrust_fr = Pitch_Thrust * (90 - front_right_servo_angle) / 90;//0 degrees, use 0 roll tilt, at 45 deg, half, 90 deg, full tilt
+	float pitch_thrust_fl = Pitch_Thrust * (90 - front_left_servo_angle) / 90;
+	float pitch_thrust_br = Pitch_Thrust * (90 - back_right_servo_angle) / 90;
+	float pitch_thrust_bl = Pitch_Thrust * (90 - back_left_servo_angle) / 90;
+
+
+	//Roll thrust should go from full value at 0 deg, half at 45 deg, none at 90 deg (try sinusoid later)
+	float roll_thrust_fr = Roll_Thrust * (90 - front_right_servo_angle) / 90;//0 degrees, use 0 roll tilt, at 45 deg, half, 90 deg, full tilt
+	float roll_thrust_fl = Roll_Thrust * (90 - front_left_servo_angle) / 90;
+	float roll_thrust_br = Roll_Thrust * (90 - back_right_servo_angle) / 90;
+	float roll_thrust_bl = Roll_Thrust * (90 - back_left_servo_angle) / 90;
+
+
+	//Yaw thrust should go from nothing at 0 deg, half at 45 deg, full at 90 deg (try sinusoid later)
+	float yaw_thrust_fr = Yaw_Thrust * (front_right_servo_angle) / 90;
+	float yaw_thrust_fl = Yaw_Thrust * (front_left_servo_angle) / 90;
+	float yaw_thrust_br = Yaw_Thrust * (back_right_servo_angle) / 90;
+	float yaw_thrust_bl = Yaw_Thrust * (back_left_servo_angle) / 90;
+
+	std::cout <<" roll thrust fr: " << roll_thrust_fr << std::endl;
+	std::cout <<" pitch thrust fr: " << pitch_thrust_fr << std::endl;
+	std::cout <<" yaw thrust fr: " << yaw_thrust_fr << std::endl;
+	std::cout <<" thrust: " << Current_Receiver_Values_Pointer->thrust << std::endl;
+
+	LOG << " roll thrust fr: " << roll_thrust_fr << "\n";
+
+
+	float front_right = Current_Receiver_Values_Pointer->thrust -pitch_thrust_fr / fr_x + roll_thrust_fr / fr_y + yaw_thrust_fr / fr_y;
+	float front_left = Current_Receiver_Values_Pointer->thrust -pitch_thrust_fl / fl_x + roll_thrust_fl / fl_y + yaw_thrust_fl / fl_y;
+
+	float back_right = Current_Receiver_Values_Pointer->thrust -pitch_thrust_br / brc_x + roll_thrust_br / brc_y + yaw_thrust_br / brc_y;
+	float back_left = Current_Receiver_Values_Pointer->thrust -pitch_thrust_bl / blc_x + roll_thrust_bl / blc_y + yaw_thrust_bl / blc_y;
+
+	float back_mid_right = Current_Receiver_Values_Pointer->thrust -pitch_thrust_br / brc_x + roll_thrust_br / brc_y + yaw_thrust_br / brc_y;
+	float back_mid_left = Current_Receiver_Values_Pointer->thrust -pitch_thrust_bl / blc_x + roll_thrust_bl / blc_y + yaw_thrust_bl / blc_y;
+
+	float back_far_right = Current_Receiver_Values_Pointer->thrust -pitch_thrust_br / brc_x + roll_thrust_br / brc_y + yaw_thrust_br / brc_y;
+	float back_far_left = Current_Receiver_Values_Pointer->thrust -pitch_thrust_bl / blc_x + roll_thrust_bl / blc_y + yaw_thrust_bl / blc_y;
+
+	std::cout <<" front right: " << front_right <<std::endl;
+
+	LOG << " front right: " << front_right << "\n";
+
+	propulsion_units[0].PWM_micros = 1000 + front_right * 1000;
+	propulsion_units[1].PWM_micros = 1000 + front_left * 1000;
+
+	propulsion_units[2].PWM_micros = 1000 + back_right * 1000;
+	propulsion_units[3].PWM_micros = 1000 + back_left * 1000;
+
+	propulsion_units[4].PWM_micros = 1000 + back_mid_right * 1000;
+	propulsion_units[5].PWM_micros = 1000 + back_mid_left * 1000; 
+
+	propulsion_units[6].PWM_micros = 1000 + back_far_left * 1000;
+	propulsion_units[7].PWM_micros = 1000 + back_far_left * 1000; 
+
+
+
+/*
+	Serial.println(Receiver->thrust);
+	Serial.println(Pitch_Thrust);
+	Serial.println(Roll_Thrust);
+	Serial.println(Yaw_Thrust);
+*/
+
+
+	//Arming: Aux1 (top far left) must go all the way down (can start anywhere) and all the way up to arm
+	//If Aux1 starts down (1) or goes down (to 1), set Aux1_down true (always starts false)
+/*
+	if (Receiver->aux1 < 0.3){
+		Aux1_been_up = true;
+	}
+	
+	if (Receiver->aux1 > 0.7){
+		Aux1_been_down = true;
+	}
+
+	
+	Arming off for now
+
+	if (not Aux1_been_up || not Aux1_been_down){
+		Commands.front_right = 0;
+		Commands.front_left = 0;
+		Commands.back_right = 0;
+		Commands.back_left = 0;
+		Commands.back_mid_right = 0;
+		Commands.back_mid_left = 0;
+		Commands.back_far_right = 0;
+		Commands.back_far_left = 0;
+	}
+	*/
+
+
+	if (Current_Receiver_Values_Pointer->thrust < 0.1){
+
+		for (int i=0; i<8; i++)
+  			{
+			propulsion_units[i].PWM_micros = 1000;
+		}
+
+	}
+
+
+
+
+	float PD_Yaw = yaw_rate_error * 0.2 + roll_rate_error_deriv * 0; //0.2
+	float yaw_tilt_fr = PD_Yaw * (90 - front_right_servo_angle) / 90;//0 degrees, use full yaw tilt, at 45 deg, half as much, 90 deg, none
+	float yaw_tilt_fl = PD_Yaw * (90 - front_left_servo_angle) / 90;
+	float yaw_tilt_br = PD_Yaw * (90 - back_right_servo_angle) / 90;
+	float yaw_tilt_bl = PD_Yaw * (90 - back_left_servo_angle) / 90;
+
+	//Intuitively, if rolled 5 deg, might want 2-3 deg arm tilt (just guess based on yaw effectiveness), 45 deg/sec might need 4-5 deg tilt
+	float PD_Roll_Tilt = roll_rate_error * 0.2 + roll_rate_error_deriv * 0; //0.2
+	float roll_tilt_fr = PD_Roll_Tilt * (front_right_servo_angle) / 90;//0 degrees, use 0 roll tilt, at 45 deg, half, 90 deg, full tilt
+	float roll_tilt_fl = PD_Roll_Tilt * (front_left_servo_angle) / 90;
+	float roll_tilt_br = PD_Roll_Tilt * (back_right_servo_angle) / 90;
+	float roll_tilt_bl = PD_Roll_Tilt * (back_left_servo_angle) / 90;
+
+	//Just guess, if pitched up 5 deg, might want 2-3 deg arm tilt, 45 deg/sec might need 4-5 deg tilt
+	float PD_Pitch_Tilt = pitch_rate_error * 0.6 + pitch_rate_error_deriv * 0; //0.3
+	float pitch_tilt_fr = PD_Pitch_Tilt * (front_right_servo_angle) / 90;//0 degrees, use 0 pitch tilt, at 45 deg, half, 90 deg, full tilt
+	float pitch_tilt_fl = PD_Pitch_Tilt * (front_left_servo_angle) / 90;
+	float pitch_tilt_br = PD_Pitch_Tilt * (back_right_servo_angle) / 90;
+	float pitch_tilt_bl = PD_Pitch_Tilt * (back_left_servo_angle) / 90;
+
+
+	//Quick thing to limit slew rate on master tilt (controls still move at max rate)
+	float max_tilt_rate_slow = 15; //Deg/sec max tilt rate of master_tilt
+	float max_tilt_rate_fast = 30; //Deg/sec max tilt rate of master_tilt
+
+
+	//If flipped up (0), move to forward position at slow speed (no matter what)
+	//If flipped to the middle (0.5), move to hover position at slow speed (no matter what)
+	//If flipped down (1), move to reverse thrust at fast speed (no matter what)
+	if (Current_Receiver_Values_Pointer->aux2 < 0.25){
+		max_tilt_rate = max_tilt_rate_slow;
+		desired_tilt = Current_Receiver_Values_Pointer->dial1 * 100;
+	}
+
+	if (Current_Receiver_Values_Pointer->aux2 >= 0.25 && Current_Receiver_Values_Pointer->aux2 <= 0.75){
+		max_tilt_rate = max_tilt_rate_slow;
+		desired_tilt = 25;
+	}
+
+	if (Current_Receiver_Values_Pointer->aux2 > 0.75){
+		max_tilt_rate = max_tilt_rate_fast;
+		desired_tilt = 0;
+	}
+
+
+	//Flipping aux1 up makes it go to hover position fast no matter what
+	if (Current_Receiver_Values_Pointer->aux1 < 0.7){
+		max_tilt_rate = max_tilt_rate_fast;
+		desired_tilt = 0;
+	}
+
+
+	if (dt > 20000){
+		dt = 10000;
+	}
+
+
+	if (master_tilt < desired_tilt){
+		master_tilt = master_tilt + max_tilt_rate * dt / 1000000; //(dt from above)
+	}
+	else{
+		master_tilt = master_tilt - max_tilt_rate * dt / 1000000;
+	}
+
+	//Limit backwards tilt to avoid servo crushing into itself
+	if (master_tilt < -32){
+		master_tilt = -32;
+	}
+
+/*
+	Serial.println(" ");
+	Serial.print("master_tilt: "); Serial.print(master_tilt);
+	Serial.println(" ");
+	Serial.print("des tilt: "); Serial.print(desired_tilt);
+	Serial.println(" ");
+	Serial.print("yaw: "); Serial.print(yaw_tilt_fr);
+*/
+
+	front_right_servo_angle = master_tilt + yaw_tilt_fr - roll_tilt_fr + pitch_tilt_fr;
+	front_left_servo_angle = master_tilt - yaw_tilt_fl + roll_tilt_fl + pitch_tilt_fl;
+
+	back_right_servo_angle = master_tilt + yaw_tilt_br - roll_tilt_br - pitch_tilt_br;
+	back_left_servo_angle = master_tilt  - yaw_tilt_bl + roll_tilt_bl - pitch_tilt_br;
+
+	std::cout << "master tilt: " << master_tilt << std::endl;
+	std::cout << "roll tilt: " << roll_tilt_fr << std::endl;
+	std::cout << "yaw tilt: " << yaw_tilt_fr << std::endl;
+	std::cout << "front_right_servo_angle: " << front_right_servo_angle << std::endl;
+
+	LOG << "roll tilt: " << roll_tilt_fr << "\n";
+	LOG << "yaw tilt: " << yaw_tilt_fr << "\n";
+	LOG << "front_right_servo_angle: " << front_right_servo_angle << "\n";
+
+
+	servo_units[0].PWM_micros = servo_units[0].zero_deg_pwm + front_right_servo_angle/90 * (servo_units[0].ninety_deg_pwm - servo_units[0].zero_deg_pwm);
+	servo_units[1].PWM_micros = servo_units[1].zero_deg_pwm + front_left_servo_angle/90 * (servo_units[1].ninety_deg_pwm - servo_units[1].zero_deg_pwm);
+	servo_units[2].PWM_micros = servo_units[2].zero_deg_pwm + back_right_servo_angle/90 * (servo_units[2].ninety_deg_pwm - servo_units[2].zero_deg_pwm);
+	servo_units[3].PWM_micros = servo_units[3].zero_deg_pwm + back_left_servo_angle/90 * (servo_units[3].ninety_deg_pwm - servo_units[3].zero_deg_pwm);
+
+	float a = front_right_servo_angle/90;
+	float b = servo_units[0].ninety_deg_pwm - servo_units[0].zero_deg_pwm;
+	LOG << "front_right PWM 1 : " << a << "\n";
+	LOG << "front_right PWM 2 : " << b << "\n";
+	LOG << "front_right PWM: " << servo_units[0].PWM_micros << "\n";
+
+	LOG << "prop 0 micros - 1: " << propulsion_units[0].PWM_micros;
+
+	std::cout << "servo 0 micros - 1: " << servo_units[0].PWM_micros << std::endl;
+
+	//Send PWMs directly to GPIO pins
+	send_pwms(); //87 microseconds
+
+
+
 
 		if(verbose){
 
@@ -2867,32 +3901,20 @@ void Control::run(Location::LOCATION * Current_Location_Pointer, Receiver::RECEI
 		}
 
 
-
-		//Send PWMs directly to GPIO pins
-		send_pwms(); //87 microseconds
-
-
-		//Send fan forces and moments generated by last set of pwms (not set of pwms found in this loop) to XPlane
-		send_XPlane_inputs();
-
 	
 
 		//For timing experimentation
 		auto run_stop = std::chrono::steady_clock::now();
 		auto run_time = std::chrono::duration_cast<std::chrono::microseconds>(run_stop - run_start).count();
-		//printf("Run() time: %li \n", run_time);
+		printf("Run() time: %li \n", run_time);
 
+		LOG.close();
 
-/*
-		auto run_time1 = std::chrono::duration_cast<std::chrono::microseconds>(run_stop - run_1).count();
-		auto run_time2 = std::chrono::duration_cast<std::chrono::microseconds>(run_stop - run_2).count();
-
-		printf("Run() time1: %li \n", run_time1);
-		printf("Run() time2: %li \n", run_time2);
-		
-		*/
 
 	}
+
+
+
 
 
 
@@ -3925,4 +4947,3 @@ float Control::motor_thrust_to_pwm(Control::PROPULSION_UNIT * Propulsion_Unit, f
 	}
 
 */
-
