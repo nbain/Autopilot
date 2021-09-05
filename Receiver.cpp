@@ -65,7 +65,7 @@ void Receiver::init(std::string file_path)
 	{
 
 		std::cout << "Initializing receiver" << std::endl;
-		setup_port();
+		//setup_port();
 		std::cout << "Finished setting up serial port...\n";
 
 		LOG_PATH = file_path;
@@ -91,6 +91,7 @@ void Receiver::init(std::string file_path)
 
 	}
 
+/*
 // NOTE: can speed up Serial read by reading twice the message length and parsing for the start marker
 // rather than reading for the start marker one byte at a time
 void Receiver::readData() {
@@ -148,6 +149,7 @@ void Receiver::convertMessage() {
 	}
 }
 
+
 void Receiver::setup_port() {
 	serial_port_read = open(readPath.c_str(), O_RDWR | O_NOCTTY);
 
@@ -160,7 +162,7 @@ void Receiver::setup_port() {
 		printf("Error %i from tcgetattr: %s\n", errno, strerror(errno));
 	}
 
-	/*options.c_cflag &= ~PARENB; // Clear parity bit, disabling parity (most common)
+	options.c_cflag &= ~PARENB; // Clear parity bit, disabling parity (most common)
 	options.c_cflag &= ~CSTOPB; // Clear stop field, only one stop bit used in communication (most common)
 	options.c_cflag &= ~CSIZE; // Clear all bits that set the data size 
 	options.c_cflag |= CS8; // 8 bits per byte (most common)
@@ -185,7 +187,7 @@ void Receiver::setup_port() {
 	ioctl(serial_port_read, TIOCGSERIAL, &serial);
 	
 	options.c_cc[VTIME] = 0; // no timeout
-	options.c_cc[VMIN] = numBytes; // always wait for expected number of bytes*/
+	options.c_cc[VMIN] = numBytes; // always wait for expected number of bytes
 	
 	options.c_lflag |= ICANON;
 	options.c_cflag &= ~CRTSCTS;
@@ -200,7 +202,7 @@ void Receiver::setup_port() {
 
 	//tcflush(serial_port_read, TCIOFLUSH); // Flush to put settings to work
 }
-
+*/
 
 void Receiver::read_intent()
 	{
@@ -208,7 +210,7 @@ void Receiver::read_intent()
 		//std::cout << "Reading receiver" << std::endl;
 
 
-
+/*
 		readData(); // Get receiver data over Serial from Arduino
 
 	  	Current_Receiver_Values.thrust = clip(recv_values[0], 0, 1);
@@ -229,6 +231,18 @@ void Receiver::read_intent()
 		LOG << Current_Receiver_Values.aux1 << ", ";
 		LOG << Current_Receiver_Values.aux2 << ", ";
 		LOG << Current_Receiver_Values.dial1 << "\n\n";
+*/
+
+		//For testing without receiver connected
+		Current_Receiver_Values.thrust = 0.9;
+		Current_Receiver_Values.pitch = 0;
+		Current_Receiver_Values.roll = 0;
+		Current_Receiver_Values.yaw = 0;
+		Current_Receiver_Values.aux1 = 0;
+		Current_Receiver_Values.aux2 = 0;
+		Current_Receiver_Values.dial1 = 0;
+
+
 
 		std::cout << "TPRYAAD: ";
 		printf("%5.2f", Current_Receiver_Values.thrust);

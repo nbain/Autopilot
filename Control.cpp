@@ -332,7 +332,7 @@ Inductance meter shows:
 
 XPlane XPlane_for_Control;
 
-
+/*
 void Control::init_PCA9685() {
     
 	std::string filename = "/dev/i2c-0";
@@ -346,7 +346,7 @@ void Control::init_PCA9685() {
 		setPWM(i, 0, 1000);
 	}
 
-	/*for(;;) {
+	for(;;) {
 		auto start = std::chrono::steady_clock::now();
 		for(int i=500; i<4096; i++) {
 		 auto start = std::chrono::steady_clock::now();
@@ -360,10 +360,12 @@ auto duration = std::chrono::duration_cast<std::chrono::microseconds>(std::chron
 //set_PCA9865_register((uint8_t) (0x06 + (0 * 4) + 3), highOFF);
 auto duration = std::chrono::duration_cast<std::chrono::microseconds>(std::chrono::steady_clock::now()-start).count();
 		std::cout << "single byte ioctl: " << duration << std::endl;
-	}*/
+	}
     
 }
+*/
 
+/*
 void Control::set_PCA9865_register(uint8_t reg, uint8_t val) {
     
     uint8_t address = PCA9685_I2C_address;
@@ -399,6 +401,7 @@ void Control::setPWM_Fast(int channel, int off) {
 	set_PCA9865_register((uint8_t) (0x06 + (channel * 4) + 2), lowOFF);
 	set_PCA9865_register((uint8_t) (0x06 + (channel * 4) + 3), highOFF);
 }
+*/
 
 /*
 Fill in the values for the motor and servo structs.  Do once at the beginning.  As far as understand, must be done in a function rather
@@ -410,78 +413,42 @@ void Control::set_motor_and_servo_parameters()
 	{
 
 
-	APC_8_45MR.fan_thrust_coefficient = 395; //Fit to APC data (sea-level)
-	APC_8_45MR.fan_aero_torque_coefficient = 3370; //Fit to APC data (sea-level)
-	APC_8_45MR.fan_assembly_moment_of_inertia = 0.000034;
-
-	//Back right
-	Turnigy_1400kv_2.effective_impedance = 0.75;
-	Turnigy_1400kv_2.torque_constant = 0.03143;
-	Turnigy_1400kv_2.coil_resistance = 0.083;
-	Turnigy_1400kv_2.motor_kv = 1400;
-
-	//Back mid right
-	Turnigy_1400kv_8.effective_impedance = 0.75;
-	Turnigy_1400kv_8.torque_constant = 0.03143;
-	Turnigy_1400kv_8.coil_resistance = 0.083;
-	Turnigy_1400kv_8.motor_kv = 1400;
-
-	//Back left
-	Turnigy_1400kv_10.effective_impedance = 0.7;
-	Turnigy_1400kv_10.torque_constant = 0.03143;
-	Turnigy_1400kv_10.coil_resistance = 0.083;
-	Turnigy_1400kv_10.motor_kv = 1400;
-
-	//Back mid left
-	Turnigy_1400kv_6.effective_impedance = 0.67;
-	Turnigy_1400kv_6.torque_constant = 0.03143;
-	Turnigy_1400kv_6.coil_resistance = 0.083;
-	Turnigy_1400kv_6.motor_kv = 1400;
-
-
+	APC_13_55MR.fan_thrust_coefficient = 200; //Fit to APC data (sea-level)
+	APC_13_55MR.fan_aero_torque_coefficient = 3000; //Fit to APC data (sea-level)
+	APC_13_55MR.fan_assembly_moment_of_inertia = 0.000134;
 
 	//Front right
-	Turnigy_1500kv_1.effective_impedance = 0.44;
-	Turnigy_1500kv_1.torque_constant = 0.045;
-	Turnigy_1500kv_1.coil_resistance = 0.0485; //44.9-45.1 mOhms at 20 deg C
-	Turnigy_1500kv_1.motor_kv = 1500;
+	Turnigy_410kv_1.cogging_torque = 0.0087;
+	Turnigy_410kv_1.coil_reluctance_const =  0.0016;
+	Turnigy_410kv_1.alignment_torque_const = 0.0349;
+	Turnigy_410kv_1.effective_impedance = 0.75;
+	Turnigy_410kv_1.torque_constant = 0.03143;
+	Turnigy_410kv_1.coil_resistance = 0.083;
+	Turnigy_410kv_1.motor_kv = 410;
 
 	//Front left
-	Turnigy_1500kv_2.effective_impedance = 0.46;
-	Turnigy_1500kv_2.torque_constant = 0.045;
-	Turnigy_1500kv_2.coil_resistance = 0.0485; //44.9-45.1 mOhms at 20 deg C
-	Turnigy_1500kv_2.motor_kv = 1500;
+	Turnigy_410kv_2.cogging_torque = 0.0087;
+	Turnigy_410kv_2.coil_reluctance_const =  0.0016;
+	Turnigy_410kv_2.alignment_torque_const = 0.0349;
+	Turnigy_410kv_2.effective_impedance = 0.75;
+	Turnigy_410kv_2.torque_constant = 0.03143;
+	Turnigy_410kv_2.coil_resistance = 0.083;
+	Turnigy_410kv_2.motor_kv = 410;
 
-	//Back right
-	Turnigy_1500kv_3.effective_impedance = 0.5;
-	Turnigy_1500kv_3.torque_constant = 0.045;
-	Turnigy_1500kv_3.coil_resistance = 0.0485; //44.9-45.1 mOhms at 20 deg C
-	Turnigy_1500kv_3.motor_kv = 1500;
-
-	//Back left
-	Turnigy_1500kv_4.effective_impedance = 0.44;
-	Turnigy_1500kv_4.torque_constant = 0.045;
-	Turnigy_1500kv_4.coil_resistance = 0.0485; //44.9-45.1 mOhms at 20 deg C
-	Turnigy_1500kv_4.motor_kv = 1500;
-
-
-
-	BLHeli_35A.motor_controller_input_exponent = 2.35;
-	BLHeli_35A.P_gain = 0.0015;
-	BLHeli_35A.I_gain = 0.017;
-	BLHeli_35A.min_pwm = 1040;
-	BLHeli_35A.max_pwm = 1960;
-	BLHeli_35A.integral_discount_per_sec = 0.01;
-	BLHeli_35A.max_pulse_power_fraction = 0.94;
+	//Back
+	Turnigy_410kv_3.cogging_torque = 0.0087;
+	Turnigy_410kv_3.coil_reluctance_const =  0.0016;
+	Turnigy_410kv_3.alignment_torque_const = 0.0349;
+	Turnigy_410kv_3.effective_impedance = 0.75;
+	Turnigy_410kv_3.torque_constant = 0.03143;
+	Turnigy_410kv_3.coil_resistance = 0.083;
+	Turnigy_410kv_3.motor_kv = 410;
 
 
-	Multistar_40A.motor_controller_input_exponent = 2.35;
-	Multistar_40A.P_gain = 0.001;
-	Multistar_40A.I_gain = 0.015;
-	Multistar_40A.min_pwm = 1040;
-	Multistar_40A.max_pwm = 1960;
-	Multistar_40A.integral_discount_per_sec = 0.01;
-	Multistar_40A.max_pulse_power_fraction = 0.94;
+	VESC_80A.min_pwm = 1000;
+	VESC_80A.max_pwm = 2000;
+	VESC_80A.max_q_current = 18;
+
 
 
 	Quimat_17kgcm.P_gain = 2.5;
@@ -493,91 +460,52 @@ void Control::set_motor_and_servo_parameters()
 
 
 	//Fan hardware for all propulsion units
-	fr_fan.fan = APC_8_45MR;
-	fl_fan.fan = APC_8_45MR;
-	br_fan.fan = APC_8_45MR;
-	bl_fan.fan = APC_8_45MR;
-	bmr_fan.fan = APC_8_45MR;
-	bml_fan.fan = APC_8_45MR;
-	bfr_fan.fan = APC_8_45MR;
-	bfl_fan.fan = APC_8_45MR;
+	fr_fan.fan = APC_13_55MR;
+	fl_fan.fan = APC_13_55MR;
+	back_fan.fan = APC_13_55MR;
 
 
 	//Motor hardware for all propulsion units
-	fr_fan.motor = Turnigy_1500kv_1;
-	fl_fan.motor = Turnigy_1500kv_2;
-	br_fan.motor = Turnigy_1400kv_2;
-	bl_fan.motor = Turnigy_1400kv_10;
-	bmr_fan.motor = Turnigy_1400kv_8;
-	bml_fan.motor = Turnigy_1400kv_6;
-	bfr_fan.motor = Turnigy_1500kv_3;
-	bfl_fan.motor = Turnigy_1500kv_4;
+	fr_fan.motor = Turnigy_410kv_1;
+	fl_fan.motor = Turnigy_410kv_2;
+	back_fan.motor = Turnigy_410kv_3;
 
 
 	//Motor controller for all propulsion units
-	fr_fan.motor_controller = Multistar_40A;
-	fl_fan.motor_controller = Multistar_40A;
-	br_fan.motor_controller = BLHeli_35A;
-	bl_fan.motor_controller = BLHeli_35A;
-	bmr_fan.motor_controller = BLHeli_35A;
-	bml_fan.motor_controller = BLHeli_35A;
-	bfr_fan.motor_controller = Multistar_40A;
-	bfl_fan.motor_controller = Multistar_40A;
+	fr_fan.motor_controller = VESC_80A;
+	fl_fan.motor_controller = VESC_80A;
+	back_fan.motor_controller = VESC_80A;
 
 
 
 	//In meters.  Left-right location.  Right is +.
-	fr_fan.x_loc = 0.23;
-	fl_fan.x_loc = -0.23;
-	br_fan.x_loc = 0.18;
-	bl_fan.x_loc = -0.18;
-	bmr_fan.x_loc = 0.4;
-	bml_fan.x_loc = -0.4;
-	bfr_fan.x_loc = 0.62;
-	bfl_fan.x_loc = -0.62;
+	fr_fan.x_loc = 0.4;
+	fl_fan.x_loc = -0.4;
+	back_fan.x_loc = 0.0;
 
 
 	 //In meters.  Front-back location.  Front is +.
-	fr_fan.y_loc = 0.99;
-	fl_fan.y_loc = 0.99;
-	br_fan.y_loc = -0.35;
-	bl_fan.y_loc = -0.35;
-	bmr_fan.y_loc = -0.35;
-	bml_fan.y_loc = -0.35;
-	bfr_fan.y_loc = -0.35;
-	bfl_fan.y_loc = -0.35;
+	fr_fan.y_loc = 0.2;
+	fl_fan.y_loc = 0.2;
+	back_fan.y_loc = -0.35;
 
 
 	//In meters.  Front-back location.  Front is +.
 	fr_fan.motor_direction = 1;
 	fl_fan.motor_direction = -1;
-	br_fan.motor_direction = 1;
-	bl_fan.motor_direction = -1;
-	bmr_fan.motor_direction = -1;
-	bml_fan.motor_direction = 1;
-	bfr_fan.motor_direction = -1;
-	bfl_fan.motor_direction = 1;
+	back_fan.motor_direction = 1;
 
 
 	//GPIO pin servicing propulsion unit
 	fr_fan.gpio_pin = 0;
 	fl_fan.gpio_pin = 1;
-	br_fan.gpio_pin = 2;
-	bl_fan.gpio_pin = 3;
-	bmr_fan.gpio_pin = 4;
-	bml_fan.gpio_pin = 5;
-	bfr_fan.gpio_pin = 6;
-	bfl_fan.gpio_pin = 7;
+	back_fan.gpio_pin = 2;
+
 
 	//Servo servicing propulsion unit
 	fr_fan.servo_num = 1;
 	fl_fan.servo_num = 2;
-	br_fan.servo_num = 3;
-	bl_fan.servo_num = 4;
-	bmr_fan.servo_num = 3;
-	bml_fan.servo_num = 4;
-	bfr_fan.servo_num = 3;
-	bfl_fan.servo_num = 4;
+	back_fan.servo_num = 3;
 
 
 	//0.4166 sec 0-90 deg from first movement starting from stop -> 2,920 deg/sec^2 = 50.96 rad/sec^2 (0.082 sec to max, moves 9.8 degrees during this acceleration)
@@ -589,48 +517,36 @@ void Control::set_motor_and_servo_parameters()
 	//Motor supply voltage = 6.21 V
 	front_right_servo.servo = Quimat_17kgcm;
 	front_left_servo.servo = Quimat_17kgcm;
-	back_right_servo.servo = Quimat_17kgcm;
-	back_left_servo.servo = Quimat_17kgcm;
+	back_servo.servo = Quimat_17kgcm;
 
 	front_right_servo.gpio_pin = 8;	
 	front_left_servo.gpio_pin = 9;
-	back_right_servo.gpio_pin = 10;
-	back_left_servo.gpio_pin = 11;
+	back_servo.gpio_pin = 10;
 
 	front_right_servo.zero_deg_pwm = 850;
 	front_left_servo.zero_deg_pwm = 810;
-	back_right_servo.zero_deg_pwm = 1140;
-	back_left_servo.zero_deg_pwm = 1000;
+	back_servo.zero_deg_pwm = 1140;
 
 	front_right_servo.ninety_deg_pwm = 1830;	
 	front_left_servo.ninety_deg_pwm = 1860;
-	back_right_servo.ninety_deg_pwm = 1820;
-	back_left_servo.ninety_deg_pwm = 1930;
+	back_servo.ninety_deg_pwm = 1930;
 
 	front_right_servo.min_angle_pwm = 400;	
 	front_left_servo.min_angle_pwm = 400;
-	back_right_servo.min_angle_pwm = 400;
-	back_left_servo.min_angle_pwm = 400;
+	back_servo.min_angle_pwm = 400;
 
 	front_right_servo.max_angle_pwm = 2400;	
 	front_left_servo.max_angle_pwm = 2400;
-	back_right_servo.max_angle_pwm = 2400;
-	back_left_servo.max_angle_pwm = 2400;
+	back_servo.max_angle_pwm = 2400;
 
 
 	propulsion_units[0] = fr_fan;
 	propulsion_units[1] = fl_fan;
-	propulsion_units[2] = br_fan;
-	propulsion_units[3] = bl_fan;
-	propulsion_units[4] = bmr_fan;
-	propulsion_units[5] = bml_fan;
-	propulsion_units[6] = bfr_fan;
-	propulsion_units[7] = bfl_fan;
+	propulsion_units[2] = back_fan;
 
 	servo_units[0] = front_right_servo;
 	servo_units[1] = front_left_servo;
-	servo_units[2] = back_right_servo;
-	servo_units[3] = back_left_servo;
+	servo_units[2] = back_servo;
 
 	//Serial.println("MOTOR AND SERVO PARAMETERS SET");
 
@@ -733,11 +649,11 @@ float Control::get_fan_thrust(int fan_number, float rotational_velocity)
 void Control::get_end_of_loop_rot_vels_and_servo_angles()
 	{
 
-		Eigen::MatrixXf end_of_loop_motor_vels_and_servo_angles_tmp(12,1); //Probably a better way to do this.  Just need to set values for matrix
-		Eigen::MatrixXf end_of_loop_thrusts_and_angles_tmp(12,1);
+		Eigen::MatrixXf end_of_loop_motor_vels_and_servo_angles_tmp(6,1); //Probably a better way to do this.  Just need to set values for matrix
+		Eigen::MatrixXf end_of_loop_thrusts_and_angles_tmp(6,1);
 
 
-		for (int i=0; i<8; i++)
+		for (int i=0; i<3; i++)
     	{
 
     	
@@ -768,7 +684,6 @@ void Control::get_end_of_loop_rot_vels_and_servo_angles()
 			propulsion_units[i].fan_torque = powertrain_model_output.initial_motor_torque; //Torque will change from initial value, but good approximation.
 
 
-
 			end_of_loop_motor_vels_and_servo_angles_tmp(i,0) = propulsion_units[i].rotational_velocity;
 
 			end_of_loop_thrusts_and_angles_tmp(i,0) = propulsion_units[i].fan_thrust;
@@ -797,7 +712,7 @@ void Control::get_end_of_loop_rot_vels_and_servo_angles()
 
 		}
 
-		for (int i=0; i<4; i++)
+		for (int i=0; i<3; i++)
     	{
 
     		SERVO_MODEL_OUTPUT servo_model_output = run_servo_model(i, servo_units[i].PWM_micros);
@@ -805,8 +720,9 @@ void Control::get_end_of_loop_rot_vels_and_servo_angles()
 			servo_units[i].servo_angle = servo_model_output.pos_after_loop_time;
 			servo_units[i].servo_rotational_velocity = servo_model_output.rot_vel_after_loop_time;
 
-			end_of_loop_motor_vels_and_servo_angles_tmp(i+8,0) = servo_units[i].servo_angle;
-			end_of_loop_thrusts_and_angles_tmp(i+8,0) = servo_units[i].servo_angle;
+			end_of_loop_motor_vels_and_servo_angles_tmp(i+3,0) = servo_units[i].servo_angle;
+			end_of_loop_thrusts_and_angles_tmp(i+3,0) = servo_units[i].servo_angle;
+
 
 		}
 
@@ -893,22 +809,19 @@ Control::POWERTRAIN_MODEL_OUTPUT Control::run_powertrain_model(int fan_number, f
 		//Makes values readable
 		float min_pwm = propulsion_units[fan_number].motor_controller.min_pwm;
 		float max_pwm = propulsion_units[fan_number].motor_controller.max_pwm;
+		float max_q_current = propulsion_units[fan_number].motor_controller.max_q_current;
+
+		float cogging_torque = propulsion_units[fan_number].motor.cogging_torque;
+		float coil_reluctance_const = propulsion_units[fan_number].motor.coil_reluctance_const;
+		float alignment_torque_const = propulsion_units[fan_number].motor.alignment_torque_const;
+
 		float fan_torque_coeff = propulsion_units[fan_number].fan.fan_aero_torque_coefficient;
 		float current_rot_vel = propulsion_units[fan_number].rotational_velocity;
 
-		float max_rot_vel_efficiency = propulsion_units[fan_number].max_rot_vel_efficiency;
-		float max_rot_vel_input_power = propulsion_units[fan_number].max_rot_vel_input_power;
-
-		float P_gain = propulsion_units[fan_number].motor_controller.P_gain;
-		float I_gain = propulsion_units[fan_number].motor_controller.I_gain;
-		float rot_vel_error_integral = propulsion_units[fan_number].rot_vel_error_integral;
-
-		//Max current or power fraction = (pulse fraction) ^ 2.35
-		float input_exponent = propulsion_units[fan_number].motor_controller.motor_controller_input_exponent;
 
 
 
-		//Step 1: Find steady state conditions that would be generated by pulse width
+		// Find quadrature current commanded by linear mapping from PWM
 
 		//Pulse fraction of total
 		float pulse_fraction = (PWM_micros - min_pwm) / (max_pwm - min_pwm);
@@ -917,17 +830,18 @@ Control::POWERTRAIN_MODEL_OUTPUT Control::run_powertrain_model(int fan_number, f
 			pulse_fraction = 0;
 		}
 
-		//Apply input exponent and scale down to represent less than full current at max cmd
-		float max_power_input_fraction = std::pow(pulse_fraction, input_exponent) * propulsion_units[fan_number].motor_controller.max_pulse_power_fraction;
+		float q_current_cmd = pulse_fraction * max_q_current;
 
-		float steady_state_input_power = max_power_input_fraction * max_rot_vel_input_power;
-		float steady_state_output_power = steady_state_input_power * max_rot_vel_efficiency;
+		//std::cout << "Commanded quadrature current (A): " << q_current_cmd << std::endl;
 
-		//If Torque = (1/k)^2 * (rot_vel)^2, Power = (1/k)^2 * (rot_vel)^3 -> rot_vel = (Power * k^2) ^ (1/3)
-		//As torque model becomes higher fidelity, possible to use as initial guess
-		float steady_state_rot_vel = std::pow(steady_state_output_power * fan_torque_coeff * fan_torque_coeff, (1.0/3.0));
+		// Find resulting torque.  Torque = k1 * I - k2 * I^2 - k3
+		float motor_torque = alignment_torque_const * q_current_cmd
+			- coil_reluctance_const * q_current_cmd * q_current_cmd - cogging_torque;
 
-		float rot_vel_error = steady_state_rot_vel - current_rot_vel;
+		if (motor_torque < 0){
+			motor_torque = 0;
+		}
+
 
 
 
@@ -935,34 +849,11 @@ Control::POWERTRAIN_MODEL_OUTPUT Control::run_powertrain_model(int fan_number, f
 		//Would correspond to duty cycle = 100%
 		float initial_aero_torque = get_fan_aero_torque(fan_number, current_rot_vel);
 
-		float max_pos_excess_torque = propulsion_units[fan_number].max_torque_at_current_rot_vel - initial_aero_torque;
+		float initial_excess_torque = motor_torque - initial_aero_torque;
 
-		float max_pos_acceleration = max_pos_excess_torque / propulsion_units[fan_number].fan.fan_assembly_moment_of_inertia;
-
-
-		//Step 3: Find acceleration as function of P,I gains and rotational velocity error
-
-		//Update error integral
-		//Integral gets discounted by certain percentage per time (1% every second -> 63% after 0.1 sec, 95.5% after 0.01 sec)
-		float integral_discount = std::pow(propulsion_units[fan_number].motor_controller.integral_discount_per_sec, loop_time);
-		rot_vel_error_integral = propulsion_units[fan_number].rot_vel_error_integral * integral_discount + rot_vel_error * loop_time;
-
-		//Prevent integral from dragging down target when already below
-		if (rot_vel_error > 0 && rot_vel_error_integral < 0){
-			rot_vel_error_integral = 0;
-		}
-
-		
-
-		//Not exactly duty cycle because acceleration doesn't correspond to torque (aero torque)
-		float acc_fraction_cmd = P_gain * rot_vel_error + I_gain * rot_vel_error_integral;
+		float initial_rot_acc = initial_excess_torque / propulsion_units[fan_number].fan.fan_assembly_moment_of_inertia;
 
 
-		if (std::abs(acc_fraction_cmd) > 1){
-			acc_fraction_cmd = std::copysignf(1, acc_fraction_cmd);
-		}
-
-		float initial_rot_acc = acc_fraction_cmd * max_pos_acceleration;
 
 		float initial_motor_torque = initial_aero_torque + initial_rot_acc * propulsion_units[fan_number].fan.fan_assembly_moment_of_inertia;
 
@@ -977,9 +868,9 @@ Control::POWERTRAIN_MODEL_OUTPUT Control::run_powertrain_model(int fan_number, f
 		
 		POWERTRAIN_MODEL_OUTPUT powertrain_model_output;
 
-		powertrain_model_output.initial_motor_torque = initial_motor_torque;
+		powertrain_model_output.initial_motor_torque = motor_torque;
 		powertrain_model_output.rot_vel_after_loop_time = rot_vel_after_loop_time;
-		powertrain_model_output.steady_state_rotational_velocity = steady_state_rot_vel;
+		//powertrain_model_output.steady_state_rotational_velocity = steady_state_rot_vel;
 
 
 /*
@@ -1001,7 +892,6 @@ Control::POWERTRAIN_MODEL_OUTPUT Control::run_powertrain_model(int fan_number, f
 
 
 	}
-
 
 
 
@@ -1114,12 +1004,12 @@ void Control::calculate_motor_operating_limits(int fan_number)
 
 
 
-		propulsion_units[fan_number].max_torque_at_current_rot_vel = max_torque_at_current_rot_vel;
-		propulsion_units[fan_number].max_rotational_velocity = max_rot_vel;
-		propulsion_units[fan_number].max_rot_vel_thrust = max_rot_vel_thrust;
-		propulsion_units[fan_number].max_rot_vel_output_power = max_rot_vel_output_power;
-		propulsion_units[fan_number].max_rot_vel_input_power = max_rot_vel_input_power;
-		propulsion_units[fan_number].max_rot_vel_efficiency = max_rot_vel_efficiency;
+		propulsion_units[fan_number].max_torque_at_current_rot_vel = max_torque_at_current_rot_vel; //Not used
+		propulsion_units[fan_number].max_rotational_velocity = max_rot_vel; //Not used
+		propulsion_units[fan_number].max_rot_vel_thrust = max_rot_vel_thrust; //Not used
+		propulsion_units[fan_number].max_rot_vel_output_power = max_rot_vel_output_power; //Not used
+		propulsion_units[fan_number].max_rot_vel_input_power = max_rot_vel_input_power; //Not used
+		propulsion_units[fan_number].max_rot_vel_efficiency = max_rot_vel_efficiency; //Not used
 
 
 	}
@@ -1140,7 +1030,7 @@ void Control::get_max_rot_vel_and_servo_angle_deltas()
 	{
 
 
-		for (int i=0; i<8; i++)
+		for (int i=0; i<3; i++)
     	{
 
     		float min_pwm = propulsion_units[i].motor_controller.min_pwm;
@@ -1154,7 +1044,7 @@ void Control::get_max_rot_vel_and_servo_angle_deltas()
 
 		}
 
-		for (int servo_num=0; servo_num<4; servo_num++)
+		for (int servo_num=0; servo_num<3; servo_num++)
     	{
 
     		float min_angle_pwm = servo_units[servo_num].min_angle_pwm;
@@ -2039,7 +1929,7 @@ Eigen::MatrixXf Control::get_fan_forces_and_moments(Eigen::MatrixXf thrusts_and_
 		float total_z_force = 0;
 
 
-		for (int i=0; i<8; i++)
+		for (int i=0; i<3; i++)
     	{
 
 
@@ -2053,7 +1943,7 @@ Eigen::MatrixXf Control::get_fan_forces_and_moments(Eigen::MatrixXf thrusts_and_
     		float torque_to_thrust_coeff_ratio = propulsion_units[i].fan.fan_thrust_coefficient / propulsion_units[i].fan.fan_aero_torque_coefficient;
     		float motor_torque = motor_thrust * std::pow(torque_to_thrust_coeff_ratio, 2);
 
-    		int servo_index = propulsion_units[i].servo_num + 7;
+    		int servo_index = propulsion_units[i].servo_num + 2;
     		float servo_angle = thrusts_and_angles(servo_index,0);
     		int motor_dir = propulsion_units[i].motor_direction;
 
@@ -2112,7 +2002,7 @@ Eigen::MatrixXf Control::get_fan_forces_and_moments_from_rots(Eigen::MatrixXf ro
 		float total_z_force = 0;
 
 
-		for (int i=0; i<8; i++)
+		for (int i=0; i<3; i++)
     	{
 
 
@@ -2130,7 +2020,7 @@ Eigen::MatrixXf Control::get_fan_forces_and_moments_from_rots(Eigen::MatrixXf ro
 
 		//std::cout << "Motor thrust: " << motor_thrust << std::endl;
 
-    		int servo_index = propulsion_units[i].servo_num + 7;
+    		int servo_index = propulsion_units[i].servo_num + 2;
     		float servo_angle = rots_and_angles(servo_index,0);
     		int motor_dir = propulsion_units[i].motor_direction;
 
@@ -2193,17 +2083,17 @@ Eigen::MatrixXf Control::get_kinematics_derivatives(Eigen::MatrixXf thrusts_and_
 	{
 
 		//Derivatives of 3 moments and 2 forces with respect to thrust and servo angle
-		Eigen::MatrixXf kinematics_derivatives(12,5);
+		Eigen::MatrixXf kinematics_derivatives(6,5);
 
-		//Derivatives of moments and forces with respect to servo angle for each motor
-		Eigen::MatrixXf servo_kinematics_derivatives(8,5);
+		//Derivatives of moments and forces with respect to servo angle for each motor.  Makes up lower rows of kinematics_derivatives.
+		Eigen::MatrixXf servo_kinematics_derivatives(3,5);
 
 
 		//Roll Moment (Nm) = -motor_x_locs[i] * fan_thrust_coefficient * fan_rad_per_sec^2 * cos(servo_angles_mapped[i]) + motor_directions[i] * fan_aero_torque_coefficient * fan_rad_per_sec^2 * sin(servo_angles_mapped[i]);
 		//Roll Moment deriv = - 2 * motor_x_locs[i] * fan_thrust_coefficient * fan_rad_per_sec * cos(servo_angles_mapped[i]) + 2 * motor_directions[i] * fan_aero_torque_coefficient * fan_rad_per_sec * sin(servo_angles_mapped[i]);
 
 		//Get derivatives of roll, pitch, and yaw moments, x and z thrusts with respect to motor thrust at given thrust point and servo angle point for each motor
-		for (int i=0; i<8; i++)
+		for (int i=0; i<3; i++)
     	{
 
     		int servo_num = propulsion_units[i].servo_num;
@@ -2213,14 +2103,13 @@ Eigen::MatrixXf Control::get_kinematics_derivatives(Eigen::MatrixXf thrusts_and_
     		//float fan_torque_coeff = 1 / std::pow(propulsion_units[i].fan.fan_aero_torque_coefficient,2);
     		//float fan_thrust_coeff = 1 / std::pow(propulsion_units[i].fan.fan_thrust_coefficient,2);
 
-
     		float motor_thrust = thrusts_and_angles(i, 0);
 
     		float torque_to_thrust_coeff_ratio = propulsion_units[i].fan.fan_thrust_coefficient / propulsion_units[i].fan.fan_aero_torque_coefficient;
     		float motor_torque = motor_thrust * std::pow(torque_to_thrust_coeff_ratio, 2);
 
     		
-    		int servo_index = propulsion_units[i].servo_num + 7;
+    		int servo_index = propulsion_units[i].servo_num + 2;
     		float servo_angle = thrusts_and_angles(servo_index,0);
     		int motor_dir = propulsion_units[i].motor_direction;
 
@@ -2241,7 +2130,6 @@ Eigen::MatrixXf Control::get_kinematics_derivatives(Eigen::MatrixXf thrusts_and_
 			kinematics_derivatives(i,4) = cos(servo_angle);
 
 
-
 			//Get derivatives of roll, pitch, and yaw moments, z and x thrusts with respect to servo angle at given fan rotational velocity and servo angle for each motor
 			servo_kinematics_derivatives(i,0) = motor_thrust * x_loc * sin(servo_angle) + motor_dir * motor_torque * cos(servo_angle);
 
@@ -2257,12 +2145,10 @@ Eigen::MatrixXf Control::get_kinematics_derivatives(Eigen::MatrixXf thrusts_and_
 		}
 
 
-
 		//Put servo derivatives on the bottom four rows of the derivatives matrix.  Addition due to effects of multiple motors on one servo.
-		kinematics_derivatives.row(8) = servo_kinematics_derivatives.row(0);
-		kinematics_derivatives.row(9) = servo_kinematics_derivatives.row(1);
-		kinematics_derivatives.row(10) = servo_kinematics_derivatives.row(2) + servo_kinematics_derivatives.row(4) + servo_kinematics_derivatives.row(6);
-		kinematics_derivatives.row(11) = servo_kinematics_derivatives.row(3) + servo_kinematics_derivatives.row(5) + servo_kinematics_derivatives.row(7);
+		kinematics_derivatives.row(3) = servo_kinematics_derivatives.row(0);
+		kinematics_derivatives.row(4) = servo_kinematics_derivatives.row(1);
+		kinematics_derivatives.row(5) = servo_kinematics_derivatives.row(2);
 
 /*
 		std::cout << "thrusts_and_angles: " << std::endl;
@@ -2298,6 +2184,7 @@ Eigen::MatrixXf Control::iterate_thrusts_and_angles(Eigen::MatrixXf thrusts_and_
 
 		int iteration_count = 0;
 
+
 		for(;;){
 
 			//std::cout << "thrusts_and_angles_guess: " << thrusts_and_angles_guess.transpose() << std::endl;
@@ -2323,10 +2210,12 @@ Eigen::MatrixXf Control::iterate_thrusts_and_angles(Eigen::MatrixXf thrusts_and_
 				return thrusts_and_angles_guess;
 			}
 
+			std::cout << "iteration_count: " << iteration_count << std::endl;
+
 
 			//Kinematics derivatives at the current state
 			Eigen::MatrixXf kinematics_derivatives = get_kinematics_derivatives(thrusts_and_angles_guess);
-			//std::cout << "kinematics_derivatives: " << kinematics_derivatives << std::endl;
+			std::cout << "kinematics_derivatives: " << kinematics_derivatives << std::endl;
 
 
 			//Takes 700-2600 microseconds on Udoo X86.  No obvious duration difference between first and 2nd completeOrthogonalDecomp call
@@ -2381,18 +2270,20 @@ Eigen::MatrixXf Control::get_theoretical_rot_vel_and_servo_angle_deltas(Eigen::M
 	{
 
 		Eigen::MatrixXf req_thrusts_and_angles;
-		Eigen::MatrixXf req_vels_and_angles(12,1);
+		Eigen::MatrixXf req_vels_and_angles(6,1);
+
+
 
 
 		//Initial guess for servo angles in radians from forces required
 		float target_x_force = target_forces_and_moments(0,3);
 		float target_z_force = target_forces_and_moments(0,4);
 		float avg_servo_angle = atan2(target_x_force, target_z_force);
-		float avg_thrust = sqrt(pow(target_x_force, 2) + pow(target_z_force,2)) / 8;
+		float avg_thrust = sqrt(pow(target_x_force, 2) + pow(target_z_force,2)) / 3;
 
 		if (avg_thrust == 0)
 		{
-			req_vels_and_angles.setZero(12,1);
+			req_vels_and_angles.setZero(6,1);
 			theoretical_rot_vel_and_servo_angle_deltas = req_vels_and_angles - end_of_loop_motor_vels_and_servo_angles;
 
 			return theoretical_rot_vel_and_servo_angle_deltas;
@@ -2401,9 +2292,9 @@ Eigen::MatrixXf Control::get_theoretical_rot_vel_and_servo_angle_deltas(Eigen::M
 
 
 		//Initial guess at motor thrusts and servo angles that will generate the target moments and forces
-		Eigen::MatrixXf thrusts_and_angles_guess(12,1);
+		Eigen::MatrixXf thrusts_and_angles_guess(6,1);
 
-		for (int i=0; i<8; i++)
+		for (int i=0; i<3; i++)
     	{
     		//Thrust (Nm) = 1 / (coeff ^ 2) * rot_vel ^ 2
     		//sqrt(Thrust * coeff^2) = rot_vel
@@ -2411,23 +2302,24 @@ Eigen::MatrixXf Control::get_theoretical_rot_vel_and_servo_angle_deltas(Eigen::M
 		}
 
 
-		for (int i=0; i<4; i++)
+		for (int i=0; i<3; i++)
     	{
-    		thrusts_and_angles_guess(i+8,0) = avg_servo_angle;
+    		thrusts_and_angles_guess(i+3,0) = avg_servo_angle;
 		}
 
 
-		auto run_1 = std::chrono::steady_clock::now();
+		std::cout << "Guess: " << thrusts_and_angles_guess << std::endl;
 
+		//auto run_1 = std::chrono::steady_clock::now();
 		float accuracy_requirement = 0.01;
 		req_thrusts_and_angles = iterate_thrusts_and_angles(thrusts_and_angles_guess, target_forces_and_moments, accuracy_requirement); 
 
 
-		auto run_2 = std::chrono::steady_clock::now();
+		//auto run_2 = std::chrono::steady_clock::now();
 
-		auto run_time = std::chrono::duration_cast<std::chrono::microseconds>(run_2 - run_1).count();
+		//auto run_time = std::chrono::duration_cast<std::chrono::microseconds>(run_2 - run_1).count();
 
-		printf("Iteration time: %li \n", run_time);
+		//printf("Iteration time: %li \n", run_time);
 
 		std::cout << "Target forces and moments: " << target_forces_and_moments << std::endl;
 		std::cout << "Required thrusts and angles: " << req_thrusts_and_angles.transpose() << std::endl;
@@ -2438,12 +2330,13 @@ Eigen::MatrixXf Control::get_theoretical_rot_vel_and_servo_angle_deltas(Eigen::M
 
 
 		//Find rotational velocities required to acheive given thrust desired on each fan
-		for (int i=0; i<8; i++)
+		for (int i=0; i<3; i++)
     	{
 
 			float inflow_velocity_from_forward = Current_Location_ptr->longitudinal_true_airspeed * std::sin(servo_units[i].servo_angle);
 			float inflow_velocity_from_vert = Current_Location_ptr->vertical_speed * std::cos(servo_units[i].servo_angle);
 			float inflow_velocity = inflow_velocity_from_forward + inflow_velocity_from_vert;
+
 
 			//Zero inflow velocity thrust would be higher
 			float zero_inflow_fan_thrust_req = req_thrusts_and_angles(i,0) + 0.010575 * std::pow(inflow_velocity,2);
@@ -2451,22 +2344,23 @@ Eigen::MatrixXf Control::get_theoretical_rot_vel_and_servo_angle_deltas(Eigen::M
 			float non_squareroot_coeff = std::pow(propulsion_units[i].fan.fan_thrust_coefficient, 2);
 			float sealevel_req_vel = std::sqrt(zero_inflow_fan_thrust_req * non_squareroot_coeff);
 
+
 			req_vels_and_angles(i,0) = sealevel_req_vel / std::sqrt(Current_Location_ptr->air_density_fraction);
+
 		} 
 
 
 
-		for (int i=0; i<4; i++)
+		for (int i=0; i<3; i++)
     	{
 
-			req_vels_and_angles(i+8,0) = req_thrusts_and_angles(i+8,0);
+			req_vels_and_angles(i+3,0) = req_thrusts_and_angles(i+3,0);
 
 		} 
 		
 		if(verbose){
 			std::cout << "req_vels_and_angles: " << req_vels_and_angles.transpose() << std::endl;
 		}
-		//std::cout << "req_vels_and_angles: " << req_vels_and_angles.transpose() << std::endl;
 
 
 		theoretical_rot_vel_and_servo_angle_deltas = req_vels_and_angles - end_of_loop_motor_vels_and_servo_angles;
@@ -2494,7 +2388,7 @@ void Control::get_next_loop_rot_vel_and_servo_angle_deltas()
 		float max_delta_multiple_over_allowable = 1;
 
 		//For each motor, get desired delta and compare with delta currently possible (for either spinning up or spinning down)
-		for (int i=0; i<8; i++)
+		for (int i=0; i<3; i++)
     	{
 
 
@@ -2527,13 +2421,13 @@ void Control::get_next_loop_rot_vel_and_servo_angle_deltas()
 
 
 		//For each motor, get desired delta and compare with delta currently possible (for either spinning up or spinning down)
-		for (int i=0; i<4; i++)
+		for (int i=0; i<3; i++)
     	{
 
 
-    		if (theoretical_rot_vel_and_servo_angle_deltas(i+8,0) > 0){
+    		if (theoretical_rot_vel_and_servo_angle_deltas(i+3,0) > 0){
 
-    			float multiple = theoretical_rot_vel_and_servo_angle_deltas(i+8,0) / servo_units[i].max_positive_angle_delta;
+    			float multiple = theoretical_rot_vel_and_servo_angle_deltas(i+3,0) / servo_units[i].max_positive_angle_delta;
 
     			if (multiple > 1 && multiple > max_delta_multiple_over_allowable) {
     				max_delta_multiple_over_allowable = multiple;
@@ -2542,7 +2436,7 @@ void Control::get_next_loop_rot_vel_and_servo_angle_deltas()
 
     		else{
 
-    			float multiple = theoretical_rot_vel_and_servo_angle_deltas(i+8,0) / servo_units[i].max_negative_angle_delta;
+    			float multiple = theoretical_rot_vel_and_servo_angle_deltas(i+3,0) / servo_units[i].max_negative_angle_delta;
 
     			if (multiple > 1 && multiple > max_delta_multiple_over_allowable) {
     				max_delta_multiple_over_allowable = multiple;
@@ -2556,7 +2450,7 @@ void Control::get_next_loop_rot_vel_and_servo_angle_deltas()
 
 
 		//Set fan rotational velocity deltas for next loop
-		for (int i=0; i<8; i++)
+		for (int i=0; i<3; i++)
     	{
 			propulsion_units[i].rotational_velocity_delta_required = theoretical_rot_vel_and_servo_angle_deltas(i,0); //CHANGED TO NOT DO ANY SCALING
 		}
@@ -2564,9 +2458,9 @@ void Control::get_next_loop_rot_vel_and_servo_angle_deltas()
 
 
 		//Set servo angle deltas for next loop
-		for (int i=0; i<4; i++)
+		for (int i=0; i<3; i++)
     	{
-    		servo_units[i].angle_delta_required = theoretical_rot_vel_and_servo_angle_deltas(i+8,0);
+    		servo_units[i].angle_delta_required = theoretical_rot_vel_and_servo_angle_deltas(i+3,0);
 		}
 
 
@@ -2596,13 +2490,13 @@ void Control::rot_vel_and_servo_angle_deltas_to_pwms()
 
 
 		//For each motor, get and set PWMs
-		for (int i=0; i<8; i++)
+		for (int i=0; i<3; i++)
     	{
 			motor_rot_vel_delta_to_pwm(i);
 
 		}
 
-		for (int i=0; i<4; i++)
+		for (int i=0; i<3; i++)
     	{
     		servo_angle_delta_to_pwm_required(i);
 		}
@@ -2663,7 +2557,10 @@ void Control::motor_rot_vel_delta_to_pwm(int fan_number)
 
 
 
-
+		printf("\n max_positive_rot_vel_delta: %f   ", max_positive_rot_vel_delta);
+		printf("\n max_negative_rot_vel_delta: %f   ", max_negative_rot_vel_delta);
+		printf("\n rot_vel_delta_req: %f   ", rot_vel_delta_req);
+		printf("\n current_rot_vel: %f   ", current_rot_vel);
 
 		/*
 		Step 1:
@@ -2680,6 +2577,8 @@ void Control::motor_rot_vel_delta_to_pwm(int fan_number)
 		
 
 		float PWM_micros_guess = min_pwm + estimated_fraction * (max_pwm - min_pwm);
+		if (PWM_micros_guess > max_pwm){PWM_micros_guess = max_pwm;};
+		if (PWM_micros_guess < min_pwm){PWM_micros_guess = min_pwm;};
 
 
 		float upper_bound_rot_vel_delta;
@@ -2731,7 +2630,8 @@ void Control::motor_rot_vel_delta_to_pwm(int fan_number)
 		
 
 		PWM_micros_guess = lower_bound_pwm + estimated_fraction * (upper_bound_pwm - lower_bound_pwm);
-
+		if (PWM_micros_guess > max_pwm){PWM_micros_guess = max_pwm;};
+		if (PWM_micros_guess < min_pwm){PWM_micros_guess = min_pwm;};
 
 
 
@@ -2772,7 +2672,8 @@ void Control::motor_rot_vel_delta_to_pwm(int fan_number)
 		
 
 		PWM_micros_guess = lower_bound_pwm + estimated_fraction * (upper_bound_pwm - lower_bound_pwm);
-
+		if (PWM_micros_guess > max_pwm){PWM_micros_guess = max_pwm;};
+		if (PWM_micros_guess < min_pwm){PWM_micros_guess = min_pwm;};
 
 
 
@@ -2811,7 +2712,8 @@ void Control::motor_rot_vel_delta_to_pwm(int fan_number)
 		
 
 		PWM_micros_guess = lower_bound_pwm + estimated_fraction * (upper_bound_pwm - lower_bound_pwm);
-
+		if (PWM_micros_guess > max_pwm){PWM_micros_guess = max_pwm;};
+		if (PWM_micros_guess < min_pwm){PWM_micros_guess = min_pwm;};
 
 
 		powertrain_model_output = run_powertrain_model(fan_number, PWM_micros_guess);
@@ -2983,6 +2885,8 @@ void Control::servo_angle_delta_to_pwm_required(int servo_num)
 void Control::send_pwms()
 {
 
+
+/*
 	std::cout << "servo 0 micros - 2: " << servo_units[0].PWM_micros << std::endl;
 
 	std::ofstream LOG;
@@ -3036,6 +2940,8 @@ LOG << "prop 0 micros 4: " << propulsion_units[0].PWM_micros;
 	auto end_pwm = std::chrono::steady_clock::now();
 	auto dt_pwm = std::chrono::duration_cast<std::chrono::microseconds>(end_pwm-start_pwm).count();
 	std::cout << "Time for sending PWMs: " << dt_pwm << std::endl;
+*/
+
 }
 
 
@@ -3180,7 +3086,7 @@ void Control::run(Location::LOCATION * Current_Location_Pointer, Receiver::RECEI
 	{
 
 
-		auto run_start = std::chrono::steady_clock::now();
+		//auto run_start = std::chrono::steady_clock::now();
 
 		if (verbose){
 			printf("Starting run() \n");
@@ -3202,14 +3108,14 @@ void Control::run(Location::LOCATION * Current_Location_Pointer, Receiver::RECEI
 
 		end_of_loop_theoretical_fan_forces_and_moments = get_end_of_loop_theoretical_fan_forces_and_moments();
 
-
+/*
 		std::ofstream LOG;
 		LOG.open(LOG_PATH, std::ios::out | std::ios::app);	
 		LOG << "end_of_loop_motor_vels_and_servo_angles: " << std::fixed << std::setprecision(3) << end_of_loop_motor_vels_and_servo_angles.transpose() << "\n";
 		LOG << "end_of_loop_thrusts_and_angles: " << std::fixed << std::setprecision(3) << end_of_loop_thrusts_and_angles.transpose() << "\n";
 		LOG << "end_of_loop_theoretical_fan_forces_and_moments: " << end_of_loop_theoretical_fan_forces_and_moments << "\n";
 		LOG.close();
-
+*/
 
 		if(verbose){
 			std::cout << "end_of_loop_motor_vels_and_servo_angles: " << end_of_loop_motor_vels_and_servo_angles.transpose() << std::endl;
@@ -3226,7 +3132,7 @@ void Control::run(Location::LOCATION * Current_Location_Pointer, Receiver::RECEI
 		/*
 		Get motor operational limits given rotational velocity, inflow velocity, battery voltage, etc. at end of current loop
 		*/
-		for (int i=0; i<8; i++)
+		for (int i=0; i<3; i++)
     	{
     		calculate_motor_operating_limits(i);
 		}
@@ -3259,10 +3165,10 @@ void Control::run(Location::LOCATION * Current_Location_Pointer, Receiver::RECEI
 		Eigen::MatrixXf target_forces_and_moments = accelerations_to_forces_and_moments(target_accelerations); //6 microseconds
 
 
-		LOG.open(LOG_PATH, std::ios::out | std::ios::app);	
-		LOG << "target_accelerations: " << std::fixed << std::setprecision(3) << target_accelerations << "\n";
-		LOG << "target_forces_and_moments: " << std::fixed << std::setprecision(3) << target_forces_and_moments << "\n";
-		LOG.close();
+		//LOG.open(LOG_PATH, std::ios::out | std::ios::app);	
+		//LOG << "target_accelerations: " << std::fixed << std::setprecision(3) << target_accelerations << "\n";
+		//LOG << "target_forces_and_moments: " << std::fixed << std::setprecision(3) << target_forces_and_moments << "\n";
+		//LOG.close();
 
 		//std::cout << "long term target_forces_and_moments:" << target_forces_and_moments  << std::endl;
 
@@ -3270,16 +3176,17 @@ void Control::run(Location::LOCATION * Current_Location_Pointer, Receiver::RECEI
 			std::cout << "target_forces_and_moments:" << target_forces_and_moments  << std::endl;
 		}
 
-		auto run_1 = std::chrono::steady_clock::now();
+		//auto run_1 = std::chrono::steady_clock::now();
 
 		//Get delta rotational velocities and delta servo angles that would be needed to generate desired moments (likely not possible in next timestep)
 		Eigen::MatrixXf theoretical_rot_vel_and_servo_angle_deltas = get_theoretical_rot_vel_and_servo_angle_deltas(target_forces_and_moments); //target_forces_and_moments
 
+
 		std::cout << "theoretical_rot_vel_and_servo_angle_deltas:" << theoretical_rot_vel_and_servo_angle_deltas.transpose()  << std::endl;
 
-		auto run_2 = std::chrono::steady_clock::now();
+		//auto run_2 = std::chrono::steady_clock::now();
 
-		auto run_time3 = std::chrono::duration_cast<std::chrono::microseconds>(run_2 - run_1).count();
+		//auto run_time3 = std::chrono::duration_cast<std::chrono::microseconds>(run_2 - run_1).count();
 
 		//printf("Run() time3: %li \n", run_time3);
 
@@ -3308,11 +3215,11 @@ void Control::run(Location::LOCATION * Current_Location_Pointer, Receiver::RECEI
 		//std::cout << target_force_and_mom_result  << std::endl;
 
 
-		LOG.open(LOG_PATH, std::ios::out | std::ios::app);	
-		LOG << "theoretical_rot_vel_and_servo_angle_deltas: " << std::fixed << std::setprecision(3) << theoretical_rot_vel_and_servo_angle_deltas.transpose() << "\n";
-		LOG << "target vels and angles: " << std::fixed << std::setprecision(3) << longterm_target_vels_and_angles.transpose() << "\n";
-		LOG << "target_force_and_mom_result: " << std::fixed << std::setprecision(3) << target_force_and_mom_result << "\n";
-		LOG.close();
+		//LOG.open(LOG_PATH, std::ios::out | std::ios::app);	
+		//LOG << "theoretical_rot_vel_and_servo_angle_deltas: " << std::fixed << std::setprecision(3) << theoretical_rot_vel_and_servo_angle_deltas.transpose() << "\n";
+		//LOG << "target vels and angles: " << std::fixed << std::setprecision(3) << longterm_target_vels_and_angles.transpose() << "\n";
+		//LOG << "target_force_and_mom_result: " << std::fixed << std::setprecision(3) << target_force_and_mom_result << "\n";
+		//LOG.close();
 
 
 		if(verbose){
@@ -3325,7 +3232,7 @@ void Control::run(Location::LOCATION * Current_Location_Pointer, Receiver::RECEI
 		//Get commanded rotational velocity or servo angle delta, scaled down to desired deltas achievable in next timestep
 		get_next_loop_rot_vel_and_servo_angle_deltas();
 
-
+/*
 		LOG.open(LOG_PATH, std::ios::out | std::ios::app);
 		LOG << "Motor max pos deltas: ";
 		for (int i=0; i<8; i++) {LOG << propulsion_units[i].max_positive_rot_vel_delta << " ";}
@@ -3337,7 +3244,7 @@ void Control::run(Location::LOCATION * Current_Location_Pointer, Receiver::RECEI
 		for (int i=0; i<4; i++) {LOG << servo_units[i].max_negative_angle_delta << " ";}
 		LOG << "\n";
 		LOG.close();
-
+*/
 
 		if(verbose){
 
@@ -3350,26 +3257,26 @@ void Control::run(Location::LOCATION * Current_Location_Pointer, Receiver::RECEI
 
 
 			printf(" \n Max pos deltas:");
-			for (int i=0; i<8; i++)
+			for (int i=0; i<3; i++)
 	    	{
 	    		printf(" %f ", propulsion_units[i].max_positive_rot_vel_delta);
 			}
 			
 			printf(" \n Max neg deltas:");
-			for (int i=0; i<8; i++)
+			for (int i=0; i<3; i++)
 	    	{
 	    		printf(" %f ", propulsion_units[i].max_negative_rot_vel_delta);
 			}
 			
 
 			printf(" \n Max pos servo deltas:");
-			for (int i=0; i<4; i++)
+			for (int i=0; i<3; i++)
 	    	{
 	    		printf(" %f ", servo_units[i].max_positive_angle_delta);
 			}
 			
 			printf(" \n Max neg servo deltas:");
-			for (int i=0; i<4; i++)
+			for (int i=0; i<3; i++)
 	    	{
 	    		printf(" %f ", servo_units[i].max_negative_angle_delta);
 			}
@@ -3384,6 +3291,7 @@ void Control::run(Location::LOCATION * Current_Location_Pointer, Receiver::RECEI
 		rot_vel_and_servo_angle_deltas_to_pwms();
 
 
+/*
 		LOG.open(LOG_PATH, std::ios::out | std::ios::app);
 		LOG << "Motor PWMs: ";
 		for (int i=0; i<8; i++) {LOG << propulsion_units[i].PWM_micros << " ";}
@@ -3391,14 +3299,15 @@ void Control::run(Location::LOCATION * Current_Location_Pointer, Receiver::RECEI
 		for (int i=0; i<4; i++) {LOG << servo_units[i].PWM_micros << " ";}
 		LOG << "\n";
 		LOG.close();
+		*/
 
 
 		if(verbose){
 
 			printf("\n PWMS: ");
-			for (int i=0; i<8; i++){printf(" %f ", propulsion_units[i].PWM_micros);}
+			for (int i=0; i<3; i++){printf(" %f ", propulsion_units[i].PWM_micros);}
 			printf("\n Servo PWMS: ");
-			for (int i=0; i<4; i++){printf(" %f ", servo_units[i].PWM_micros);}
+			for (int i=0; i<3; i++){printf(" %f ", servo_units[i].PWM_micros);}
 			printf("\n ");
 			
 		}
@@ -3415,8 +3324,8 @@ void Control::run(Location::LOCATION * Current_Location_Pointer, Receiver::RECEI
 	
 
 		//For timing experimentation
-		auto run_stop = std::chrono::steady_clock::now();
-		auto run_time = std::chrono::duration_cast<std::chrono::microseconds>(run_stop - run_start).count();
+		//auto run_stop = std::chrono::steady_clock::now();
+		//auto run_time = std::chrono::duration_cast<std::chrono::microseconds>(run_stop - run_start).count();
 		//printf("Run() time: %li \n", run_time);
 
 		std::cout <<"Loop time used for control: " << loop_time << std::endl;
@@ -3439,6 +3348,7 @@ void Control::run(Location::LOCATION * Current_Location_Pointer, Receiver::RECEI
 	Run the control system functions and send the output directly to the motors
 
 */
+	/*
 void Control::run2(Location::LOCATION * Current_Location_Pointer, Receiver::RECEIVER * Current_Receiver_Values_Pointer)
 	{
 
@@ -3503,11 +3413,11 @@ void Control::run2(Location::LOCATION * Current_Location_Pointer, Receiver::RECE
 	//dt = micros() - l_time;
 	dt = loop_time * 1000000;
 	//Handle problem where very first dt is huge because l_time starts at 0.
-	/*
+	
 	if (l_time == 0){
 		dt = 10000;
 	}
-	l_time = micros();*/
+	l_time = micros();
 	
 	//desired_yaw_delta = 0; //CHANGE!!!
 
@@ -3650,13 +3560,13 @@ void Control::run2(Location::LOCATION * Current_Location_Pointer, Receiver::RECE
 
 
 	//PD method
-	/*
+	
 	float Pitch_Thrust = (Location->pitch - pitch_target) * Pitch_P + Location->pitch_rate * Pitch_D;
 
 	float Roll_Thrust = (Location->roll - roll_target) * Roll_P + Location->roll_rate * Roll_D; //If rolled right at no rate, should be positive
 
 	float Yaw_Thrust = yaw_error * 0.08 + Location->yaw_rate * 0.015;
-	*/
+	
 
 
 	//Pitch thrust should go from full value at 0 deg, half at 45 deg, none at 90 deg (try sinusoid later)
@@ -3717,17 +3627,17 @@ void Control::run2(Location::LOCATION * Current_Location_Pointer, Receiver::RECE
 
 
 
-/*
+
 	Serial.println(Receiver->thrust);
 	Serial.println(Pitch_Thrust);
 	Serial.println(Roll_Thrust);
 	Serial.println(Yaw_Thrust);
-*/
+
 
 
 	//Arming: Aux1 (top far left) must go all the way down (can start anywhere) and all the way up to arm
 	//If Aux1 starts down (1) or goes down (to 1), set Aux1_down true (always starts false)
-/*
+
 	if (Receiver->aux1 < 0.3){
 		Aux1_been_up = true;
 	}
@@ -3749,7 +3659,7 @@ void Control::run2(Location::LOCATION * Current_Location_Pointer, Receiver::RECE
 		Commands.back_far_right = 0;
 		Commands.back_far_left = 0;
 	}
-	*/
+	
 
 
 	if (Current_Receiver_Values_Pointer->thrust < 0.1){
@@ -3833,14 +3743,14 @@ void Control::run2(Location::LOCATION * Current_Location_Pointer, Receiver::RECE
 		master_tilt = -32;
 	}
 
-/*
+
 	Serial.println(" ");
 	Serial.print("master_tilt: "); Serial.print(master_tilt);
 	Serial.println(" ");
 	Serial.print("des tilt: "); Serial.print(desired_tilt);
 	Serial.println(" ");
 	Serial.print("yaw: "); Serial.print(yaw_tilt_fr);
-*/
+
 
 	front_right_servo_angle = master_tilt + yaw_tilt_fr - roll_tilt_fr + pitch_tilt_fr;
 	front_left_servo_angle = master_tilt - yaw_tilt_fl + roll_tilt_fl + pitch_tilt_fl;
@@ -3915,7 +3825,7 @@ void Control::run2(Location::LOCATION * Current_Location_Pointer, Receiver::RECE
 
 
 
-
+*/
 
 
 

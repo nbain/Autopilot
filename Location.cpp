@@ -47,9 +47,9 @@ void Location::init(std::string file_path)
 	{
 
 
-		std::cout << "Starting IMU" << std::endl;
-		setup_port();
-		LOG_PATH = file_path;
+		//std::cout << "Starting IMU" << std::endl;
+		//setup_port();
+		//LOG_PATH = file_path;
 
 		//XPlane_for_Location.UDP_Setup_Recv();
 
@@ -63,6 +63,7 @@ void Location::readData() {
 	dataAvailable = true;
 	int count=0;
 
+/*
 	while(dataAvailable) {
 		memset(&incomingByte, '\0', sizeof(incomingByte)); // clear the buffer holding the incoming byte
 		int n = read(serial_port_read, &incomingByte, sizeof(incomingByte)); // read a single byte
@@ -95,8 +96,11 @@ void Location::readData() {
 			}
 		}
 	}
+	*/
+
 }
 
+/*
 // Converts char array location message to a float array
 void Location::convertMessage() {
 	location_msg_ptr = strtok(location_msg, ",");
@@ -111,6 +115,7 @@ void Location::convertMessage() {
 		location_msg_ptr = strtok(NULL, ",");
 	}
 }
+
 
 void Location::setup_port() {
 	serial_port_read = open(readPath.c_str(), O_RDWR | O_NOCTTY);
@@ -137,13 +142,32 @@ void Location::setup_port() {
 
 	//tcflush(serial_port_read, TCIOFLUSH);
 }
-
+*/
 
 
 void Location::estimate()
 	{
 
+/*
 
+	//For testing without sensors
+	Current_Location.pitch = 0.1;
+	Current_Location.roll = -0.1;
+	Current_Location.heading = -0.1;
+	Current_Location.pitch_rate = 0;
+	Current_Location.roll_rate = 0;
+	Current_Location.heading_rate = 0;
+
+	Current_Location.air_density = 1.07;
+	Current_Location.air_density_fraction = Current_Location.air_density / 1.2247;
+	Current_Location.longitudinal_Q = 0.0001;
+	Current_Location.longitudinal_true_airspeed = 0;
+	Current_Location.vertical_speed = 0;
+	Current_Location.AOA = 0;
+
+	*/
+
+/*
 	readData(); // Get location data over Serial from Arduino
 	Current_Location.roll = (location_vals[0] + 2.1) * M_PI/180;
 	Current_Location.pitch = (location_vals[1] - 2.5) * M_PI/180;
@@ -152,15 +176,8 @@ void Location::estimate()
 	Current_Location.pitch_rate = -(location_vals[4]) * M_PI/180;
 	Current_Location.heading_rate = -(location_vals[5]) * M_PI/180;
 
-		//For testing without IMU connected
-	/*
-	Current_Location.pitch = 0.1;
-	Current_Location.roll = -0.1;
-	Current_Location.heading = -0.1;
-	Current_Location.pitch_rate = 0;
-	Current_Location.roll_rate = 0;
-	Current_Location.heading_rate = 0;
-	*/
+
+	
 
 	Current_Location.air_density = 1.0;
 	Current_Location.air_density_fraction = 0.8;
@@ -188,14 +205,15 @@ void Location::estimate()
 	printf("%8.3f", Current_Location.pitch_rate);
 	printf("%8.3f\t", Current_Location.heading_rate);
 
-	/*auto start = std::chrono::steady_clock::now();
+*/
 
-///*
+	//auto start = std::chrono::steady_clock::now();
+
 
 	//std::cout << "Starting estimate()" << std::endl;
 
 	XPlane_for_Location.get_data_from_XPlane();	
-///*
+
 	Current_Location.pitch = XPlane_for_Location.Current_XPlane_data.pitch_rad;
 	Current_Location.roll = XPlane_for_Location.Current_XPlane_data.roll_rad;
 	Current_Location.heading = XPlane_for_Location.Current_XPlane_data.heading_rad;

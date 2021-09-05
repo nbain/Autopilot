@@ -16,7 +16,7 @@ int XPlane::UDP_Setup_Send(){
 	//struct sockaddr_in myaddr;
 	memset(&myaddr_send, 0, sizeof(myaddr_send));
 	myaddr_send.sin_family=AF_INET;
-	myaddr_send.sin_addr.s_addr=inet_addr("192.168.1.195"); //IP Address of computer running XPlane
+	myaddr_send.sin_addr.s_addr=inet_addr("192.168.1.25"); //IP Address of computer running XPlane
 	myaddr_send.sin_port=htons(49009); //Port that plugin is listening on (49009 for modified XPlaneConnect)
 	
 	

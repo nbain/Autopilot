@@ -12,18 +12,18 @@
 #include <chrono>
 #include <cstdint>
 
-#include <Eigen/LU> 
-#include <Eigen/QR>
+#include "Eigen/LU"
+#include "Eigen/QR"
 
 //For PCA9685.  From: https://github.com/mincrmatt12/PCA9685/blob/master/src/PCA9685.cpp
 #include <cstdlib>
 #include <unistd.h>
-#include <linux/i2c-dev.h>
+//#include <linux/i2c-dev.h>
 #include <sys/ioctl.h>
 #include <fcntl.h>
 #include <stdexcept>
 
-#include <linux/i2c.h>
+//#include <linux/i2c.h>
 #include <stdint.h>
 #include <stdio.h>
 
@@ -126,7 +126,7 @@ class Control
 
 		} ;
 
-		FAN APC_8_45MR;
+		FAN APC_13_55MR;
 
 
 
@@ -137,6 +137,10 @@ class Control
 		struct MOTOR
 		{
 
+			float cogging_torque; //Nm
+			float coil_reluctance_const; //0.5 * dL/d(theta)
+			float alignment_torque_const; //N turns * Motor poles * d(mutual flux)/d(theta)
+
 			float effective_impedance; //Hack to determine current through motor.  Determined by input voltage / total current at full throttle
 			float torque_constant; //Torque in Nm per net Volt through coils.  Determines slope of torque curve.
 			float coil_resistance; //Coil resistance at operating temperature (Ohms)
@@ -144,15 +148,10 @@ class Control
 
 		} ;
 
-		MOTOR Turnigy_1400kv_2; //Back right
-		MOTOR Turnigy_1400kv_8; //Back mid right
-		MOTOR Turnigy_1400kv_10; //Back left
-		MOTOR Turnigy_1400kv_6; //Back mid left
+		MOTOR Turnigy_410kv_1; //Front right
+		MOTOR Turnigy_410kv_2; //Front left
+		MOTOR Turnigy_410kv_3; //Back
 
-		MOTOR Turnigy_1500kv_1; //Front right
-		MOTOR Turnigy_1500kv_2; //Front left
-		MOTOR Turnigy_1500kv_3; //Back far right
-		MOTOR Turnigy_1500kv_4; //Back far left
 
 
 
@@ -163,9 +162,11 @@ class Control
 		struct MOTOR_CONTROLLER
 		{
 
-			float motor_controller_input_exponent; //Motor controller current exponent.  Current = Max current * (pulse fraction) ^ (input exponent)
 			float min_pwm; //Minimum PWM that sends current to motor
 			float max_pwm; //Maximum PWM, no current restriction
+			float max_q_current; //Max quadrature current.  Amps.
+
+			float motor_controller_input_exponent; //Motor controller current exponent.  Current = Max current * (pulse fraction) ^ (input exponent)
 			float P_gain; //P gain applied to rotational velocity error.  Torque = P_gain * rotational velocity error (rad/sec) + Integral term
 			float I_gain; //I gain applied to rotational velocity error.  Torque = P term + I_gain + rotational velocity error (radians)
 			float integral_discount_per_sec; //Integral term continuously discounted to weight older errors less.  0.01x (per sec) -> 63.1% of initial value after 0.1 sec (0.01 ^ 0.1), 95.5% after 0.01 sec
@@ -173,8 +174,8 @@ class Control
 
 		} ;
 
-		MOTOR_CONTROLLER BLHeli_35A;
-		MOTOR_CONTROLLER Multistar_40A;
+		MOTOR_CONTROLLER VESC_80A;
+
 
 
 
@@ -226,19 +227,11 @@ class Control
 
 		} ;
 
-		PROPULSION_UNIT motor_1400kv{};
-		PROPULSION_UNIT motor_1500kv{};
+		PROPULSION_UNIT fr_fan;
+		PROPULSION_UNIT fl_fan;
+		PROPULSION_UNIT back_fan;
 
-		PROPULSION_UNIT fr_fan{};
-		PROPULSION_UNIT fl_fan{};
-		PROPULSION_UNIT br_fan{};
-		PROPULSION_UNIT bl_fan{};
-		PROPULSION_UNIT bmr_fan{};
-		PROPULSION_UNIT bml_fan{};
-		PROPULSION_UNIT bfr_fan{};
-		PROPULSION_UNIT bfl_fan{};
-
-		PROPULSION_UNIT propulsion_units[8];
+		PROPULSION_UNIT propulsion_units[3];
 
 
 
@@ -318,10 +311,9 @@ class Control
 
 		SERVO_UNIT front_right_servo;
 		SERVO_UNIT front_left_servo;
-		SERVO_UNIT back_right_servo;
-		SERVO_UNIT back_left_servo;
+		SERVO_UNIT back_servo;
 
-		SERVO_UNIT servo_units[4];
+		SERVO_UNIT servo_units[3];
 
 
 
@@ -401,18 +393,12 @@ class Control
 			//Desired fan thrusts in Newtons
 			float front_right_fan_thrust;
 			float front_left_fan_thrust;
-			float back_right_fan_thrust;
-			float back_left_fan_thrust;
-			float back_mid_right_fan_thrust;
-			float back_mid_left_fan_thrust;
-			float back_far_right_fan_thrust;
-			float back_far_left_fan_thrust;
+			float back_fan_thrust;
 
 			//Desired servo angles in Radians
 			float front_right_servo_angle;
 			float front_left_servo_angle;
-			float back_right_servo_angle;
-			float back_left_servo_angle;
+			float back_servo_angle;
 
 		} ;
 
@@ -429,18 +415,12 @@ class Control
 			//Desired fan thrusts in Newtons
 			int front_right_fan_micros;
 			int front_left_fan_micros;
-			int back_right_fan_micros;
-			int back_left_fan_micros;
-			int back_mid_right_fan_micros;
-			int back_mid_left_fan_micros;
-			int back_far_right_fan_micros;
-			int back_far_left_fan_micros;
+			int back_fan_micros;
 
 			//Desired servo angles in Radians
 			int front_right_servo_micros;
 			int front_left_servo_micros;
-			int back_right_servo_micros;
-			int back_left_servo_micros;
+			int back_servo_micros;
 
 		} ;
 
@@ -459,18 +439,12 @@ class Control
 			//Desired Thrust in
 			float front_right;
 			float front_left;
-			float back_right;
-			float back_left;
-			float back_mid_right;
-			float back_mid_left;
-			float back_far_right;
-			float back_far_left;
+			float back;
 
 			//0 means tilted straight up, 90 is tilted straight forward
 			float front_right_servo;
 			float front_left_servo;
-			float back_right_servo;
-			float back_left_servo;
+			float back_servo;
 
 		} ;
 
@@ -550,7 +524,7 @@ class Control
 		void send_XPlane_inputs();
 
 
-		void init_PCA9685();
+		//void init_PCA9685();
 		void set_PCA9865_register(uint8_t reg, uint8_t val);
 		void setPWM(int channel, int on, int off);
 		void setPWM_Fast(int channel, int off);
