@@ -64,8 +64,10 @@ static void ch6_PWM();
 void Receiver::init(std::string file_path)
 	{
 
+		//RECV_INIT_TIME = std::chrono::steady_clock::now();
+
 		std::cout << "Initializing receiver" << std::endl;
-		//setup_port();
+		setup_port();
 		std::cout << "Finished setting up serial port...\n";
 
 		LOG_PATH = file_path;
@@ -91,7 +93,7 @@ void Receiver::init(std::string file_path)
 
 	}
 
-/*
+
 // NOTE: can speed up Serial read by reading twice the message length and parsing for the start marker
 // rather than reading for the start marker one byte at a time
 void Receiver::readData() {
@@ -202,18 +204,31 @@ void Receiver::setup_port() {
 
 	//tcflush(serial_port_read, TCIOFLUSH); // Flush to put settings to work
 }
-*/
+
 
 void Receiver::read_intent()
 	{
 		
-		//std::cout << "Reading receiver" << std::endl;
+		std::cout << "Reading receiver" << std::endl;
 
 
-/*
+
 		readData(); // Get receiver data over Serial from Arduino
 
-	  	Current_Receiver_Values.thrust = clip(recv_values[0], 0, 1);
+
+		//Make sure throttle has been at zero position before allowing throttle command
+		if (recv_values[0] < 0.1){
+			throttle_ok = true;
+		}
+
+		if (throttle_ok){
+			Current_Receiver_Values.thrust = clip(recv_values[0], 0, 1);
+		}
+		else{
+			Current_Receiver_Values.thrust = 0;
+		}
+
+	  	//Current_Receiver_Values.thrust = clip(recv_values[0], 0, 1);
 		Current_Receiver_Values.pitch = clip(recv_values[1], -1, 1);
 		Current_Receiver_Values.roll = clip(recv_values[2], -1, 1);
 		Current_Receiver_Values.yaw = clip(recv_values[3], -1, 1);
@@ -231,8 +246,9 @@ void Receiver::read_intent()
 		LOG << Current_Receiver_Values.aux1 << ", ";
 		LOG << Current_Receiver_Values.aux2 << ", ";
 		LOG << Current_Receiver_Values.dial1 << "\n\n";
-*/
 
+
+/*
 		//For testing without receiver connected
 		Current_Receiver_Values.thrust = 0.9;
 		Current_Receiver_Values.pitch = 0;
@@ -241,7 +257,7 @@ void Receiver::read_intent()
 		Current_Receiver_Values.aux1 = 0;
 		Current_Receiver_Values.aux2 = 0;
 		Current_Receiver_Values.dial1 = 0;
-
+*/
 
 
 		std::cout << "TPRYAAD: ";

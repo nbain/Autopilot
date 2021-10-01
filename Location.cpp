@@ -47,9 +47,9 @@ void Location::init(std::string file_path)
 	{
 
 
-		//std::cout << "Starting IMU" << std::endl;
-		//setup_port();
-		//LOG_PATH = file_path;
+		std::cout << "Starting IMU" << std::endl;
+		setup_port();
+		LOG_PATH = file_path;
 
 		//XPlane_for_Location.UDP_Setup_Recv();
 
@@ -63,7 +63,7 @@ void Location::readData() {
 	dataAvailable = true;
 	int count=0;
 
-/*
+
 	while(dataAvailable) {
 		memset(&incomingByte, '\0', sizeof(incomingByte)); // clear the buffer holding the incoming byte
 		int n = read(serial_port_read, &incomingByte, sizeof(incomingByte)); // read a single byte
@@ -96,11 +96,11 @@ void Location::readData() {
 			}
 		}
 	}
-	*/
+	
 
 }
 
-/*
+
 // Converts char array location message to a float array
 void Location::convertMessage() {
 	location_msg_ptr = strtok(location_msg, ",");
@@ -142,7 +142,7 @@ void Location::setup_port() {
 
 	//tcflush(serial_port_read, TCIOFLUSH);
 }
-*/
+
 
 
 void Location::estimate()
@@ -167,10 +167,10 @@ void Location::estimate()
 
 	*/
 
-/*
+
 	readData(); // Get location data over Serial from Arduino
-	Current_Location.roll = (location_vals[0] + 2.1) * M_PI/180;
-	Current_Location.pitch = (location_vals[1] - 2.5) * M_PI/180;
+	Current_Location.roll = (location_vals[0]) * M_PI/180 + 0.025;
+	Current_Location.pitch = (location_vals[1]) * M_PI/180 - 0.024;
 	Current_Location.heading = (location_vals[2]) * M_PI/180;
 	Current_Location.roll_rate = -(location_vals[3]) * M_PI/180;
 	Current_Location.pitch_rate = -(location_vals[4]) * M_PI/180;
@@ -205,13 +205,15 @@ void Location::estimate()
 	printf("%8.3f", Current_Location.pitch_rate);
 	printf("%8.3f\t", Current_Location.heading_rate);
 
-*/
+
 
 	//auto start = std::chrono::steady_clock::now();
 
 
 	//std::cout << "Starting estimate()" << std::endl;
 
+
+/*
 	XPlane_for_Location.get_data_from_XPlane();	
 
 	Current_Location.pitch = XPlane_for_Location.Current_XPlane_data.pitch_rad;
@@ -220,8 +222,6 @@ void Location::estimate()
 	Current_Location.pitch_rate = XPlane_for_Location.Current_XPlane_data.pitch_rot_vel_calcd;
 	Current_Location.roll_rate = XPlane_for_Location.Current_XPlane_data.roll_rot_vel_calcd;
 	Current_Location.heading_rate = XPlane_for_Location.Current_XPlane_data.heading_rot_vel_calcd;
-
-
 
 	Current_Location.time = XPlane_for_Location.Current_XPlane_data.flight_time;
 
@@ -267,6 +267,9 @@ void Location::estimate()
 
 	float wing_incidence = 0;
 	Current_Location.AOA = std::atan(-Current_Location.vertical_speed / Current_Location.longitudinal_true_airspeed) + Current_Location.pitch + wing_incidence;
+
+
+
 
 	/*
 	printf("Temp: %f\n", ambient_temp_C);

@@ -18,12 +18,12 @@
 //For PCA9685.  From: https://github.com/mincrmatt12/PCA9685/blob/master/src/PCA9685.cpp
 #include <cstdlib>
 #include <unistd.h>
-//#include <linux/i2c-dev.h>
+#include <linux/i2c-dev.h>
 #include <sys/ioctl.h>
 #include <fcntl.h>
 #include <stdexcept>
 
-//#include <linux/i2c.h>
+#include <linux/i2c.h>
 #include <stdint.h>
 #include <stdio.h>
 
@@ -50,8 +50,9 @@ class Control
 		Wing pitching/hover control loss
 		*/
 
-		bool verbose = true;
+		bool verbose = false;
 
+		std::ofstream LOG;
 		std::string LOG_PATH;
 
 		int i2cHandle;
@@ -80,10 +81,10 @@ class Control
 
 
 
-		float vehicle_mass = 4; //Vehicle mass in kg.
-		float roll_moment_of_inertia = 0.22; //Roll moment of inertia in kg*m^2 (0.295)
-		float pitch_moment_of_inertia = 0.872; //Pitch moment of inertia in kg*m^2
-		float yaw_moment_of_inertia = 1.165; //Yaw moment of inertia in kg*m^2
+		float vehicle_mass = 4.7; //Vehicle mass in kg.
+		float roll_moment_of_inertia = 0.4; //Roll moment of inertia in kg*m^2 (0.295)
+		float pitch_moment_of_inertia = 0.3; //Pitch moment of inertia in kg*m^2
+		float yaw_moment_of_inertia = 1.2; //Yaw moment of inertia in kg*m^2
 
 		float commands_sent_time; //Time of start of control loop in microseconds
 		float loop_time = 0.015; //Loop time in seconds.  Updated as loop runs.
@@ -109,6 +110,7 @@ class Control
 		Eigen::MatrixXf end_of_loop_theoretical_fan_forces_and_moments;
 
 		Eigen::MatrixXf targets;
+		Eigen::MatrixXf longterm_target_vels_and_angles;
 
 		/*
 		Parameters of motor controller
@@ -174,7 +176,9 @@ class Control
 
 		} ;
 
-		MOTOR_CONTROLLER VESC_80A;
+		MOTOR_CONTROLLER VESC_80A_4; //Front right
+		MOTOR_CONTROLLER VESC_80A_5; //Front left
+		MOTOR_CONTROLLER VESC_80A_3; //Back
 
 
 
@@ -302,7 +306,7 @@ class Control
 			float min_positive_angle_delta; //Min delta servo angle between end of current loop and end of next loop.
 			float min_negative_angle_delta; //Note: Should be a negative number.
 
-
+			float long_term_angle_required; //
 			float angle_delta_required; //Servo angle delta target between end of current timestep and end of next timestep
 			float commanded_servo_acc; //Commanded rotational acceleration in rad/s^2 at time last commands sent
 			float PWM_micros = 1040; //PWM microseconds sent at end of last control loop
@@ -524,7 +528,8 @@ class Control
 		void send_XPlane_inputs();
 
 
-		//void init_PCA9685();
+		void init(std::string file_path);
+		void init_PCA9685();
 		void set_PCA9865_register(uint8_t reg, uint8_t val);
 		void setPWM(int channel, int on, int off);
 		void setPWM_Fast(int channel, int off);
